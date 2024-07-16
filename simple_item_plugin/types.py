@@ -1,6 +1,14 @@
 from enum import Enum
 
-NAMESPACE = "technicalutils"
+class NAMESPACE:
+    id : str | None = None
+    def __str__(self) -> str:
+        if self.id is None:
+            raise ValueError("Namespace not set")
+        return self.id
+    def set(self, id: str):
+        self.id = id
+
 
 
 class Lang(Enum):
