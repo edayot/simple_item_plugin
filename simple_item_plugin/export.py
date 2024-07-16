@@ -6,7 +6,7 @@ from beet import Context
 
 
 
-def beet_default(ctx: Context):
+def export(ctx: Context):
     """
     We need to export items in custom_model_data order
     """

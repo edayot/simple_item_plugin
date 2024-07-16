@@ -10,6 +10,17 @@ class _NAMESPACE:
         self.id = id
 NAMESPACE = _NAMESPACE()
 
+class _AUTHOR:
+    name : str | None = None
+    def __str__(self) -> str:
+        if self.name is None:
+            raise ValueError("Author not set")
+        return self.name
+    def set(self, name: str):
+        self.name = name
+AUTHOR = _AUTHOR()
+
+
 
 
 class Lang(Enum):

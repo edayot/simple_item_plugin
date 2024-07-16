@@ -10,7 +10,7 @@ import pathlib
 
 
 
-def beet_default(ctx: Context):
+def guide(ctx: Context):
     reset_cache = False
     cache = ctx.cache[f"{NAMESPACE}_guide"]
     if not reset_cache:
