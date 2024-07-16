@@ -1,13 +1,12 @@
-from beet import Context, LootTable, Language, FunctionTag, Function
+from beet import Context
 from dataclasses import dataclass, field
 
 from typing import Any, Literal
 from typing_extensions import TypedDict, NotRequired
-from frozendict import frozendict
-from .utils import export_translated_string, generate_uuid
-from .types import Lang, TranslatedString, NAMESPACE
-from .item import Item, BlockProperties, Registry
-from .crafting import ShapedRecipe, ShapelessRecipe, NBTSmelting, VanillaItem, SimpledrawerMaterial
+from simple_item_plugin.utils import export_translated_string
+from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
+from simple_item_plugin.item import Item, BlockProperties, Registry
+from simple_item_plugin.crafting import ShapedRecipe, ShapelessRecipe, NBTSmelting, VanillaItem, SimpledrawerMaterial
 
 from pydantic import BaseModel
 
