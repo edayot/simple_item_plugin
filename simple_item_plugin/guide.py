@@ -5,6 +5,7 @@ from model_resolver import beet_default as model_resolver
 from PIL import Image, ImageDraw, ImageFont
 from simple_item_plugin.utils import NAMESPACE
 import json
+import pathlib
 
 
 
@@ -227,29 +228,30 @@ def generate_craft(craft: list[list[Item| VanillaItem]], result: Item, count: in
 
 
 def image_count(count: int) -> Image.Image:
-	""" Generate an image showing the result count
-	Args:
-		count (int): The count to show
-	Returns:
-		Image: The image with the count
-	"""
-	# Create the image
-	size = 64
-	img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-	draw = ImageDraw.Draw(img)
-	font_size = 24
-	font = ImageFont.truetype(f"./assets/minecraft_font.ttf", size = font_size)
+    """ Generate an image showing the result count
+    Args:
+        count (int): The count to show
+    Returns:
+        Image: The image with the count
+    """
+    # Create the image
+    size = 64
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    font_size = 24
+    ttf_path = pathlib.Path(__file__).parent / "minecraft_font.ttf"
+    font = ImageFont.truetype(ttf_path, size = font_size)
 
-	# Calculate text size and positions of the two texts
-	text_width = draw.textlength(str(count), font = font)
-	text_height = font_size + 6
-	pos_1 = (45-text_width), (0)
-	pos_2 = (pos_1[0]-2, pos_1[1]-2)
-	
-	# Draw the count
-	draw.text(pos_1, str(count), (50, 50, 50), font = font)
-	draw.text(pos_2, str(count), (255, 255, 255), font = font)
-	return img
+    # Calculate text size and positions of the two texts
+    text_width = draw.textlength(str(count), font = font)
+    text_height = font_size + 6
+    pos_1 = (45-text_width), (0)
+    pos_2 = (pos_1[0]-2, pos_1[1]-2)
+    
+    # Draw the count
+    draw.text(pos_1, str(count), (50, 50, 50), font = font)
+    draw.text(pos_2, str(count), (255, 255, 255), font = font)
+    return img
 
 
 
