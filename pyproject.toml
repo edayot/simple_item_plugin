@@ -9,6 +9,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 bolt = "^0.48.0"
+model-resolver = "^0.9.0"
 
 
 [build-system]
