@@ -173,7 +173,7 @@ class Item:
         if not self.block_properties.get("world_generation", None):
             return
         for i, world_gen in enumerate(self.block_properties["world_generation"]):
-            registry = "technicalutils:impl/load_worldgen"
+            registry = f"{NAMESPACE}:impl/load_worldgen"
             if registry not in ctx.data.functions:
                 ctx.data.functions[registry] = Function()
             

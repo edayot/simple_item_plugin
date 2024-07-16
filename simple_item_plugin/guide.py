@@ -44,7 +44,7 @@ def beet_default(ctx: Context):
     cache.json["textures"] = []
     for item in all_items:
         model_path = item.model_path
-        path = f"technicalutils:render/{model_path.replace(':', '/')}"
+        path = f"{NAMESPACE}:render/{model_path.replace(':', '/')}"
         if not path in ctx.assets.textures:
             img = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
         else:

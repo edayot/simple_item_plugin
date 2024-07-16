@@ -1,6 +1,6 @@
 from enum import Enum
 
-class NAMESPACE:
+class _NAMESPACE:
     id : str | None = None
     def __str__(self) -> str:
         if self.id is None:
@@ -8,6 +8,7 @@ class NAMESPACE:
         return self.id
     def set(self, id: str):
         self.id = id
+NAMESPACE = _NAMESPACE()
 
 
 
