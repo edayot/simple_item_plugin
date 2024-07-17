@@ -10,7 +10,17 @@ import pathlib
 
 
 
+
+CHAR_OFFSET = 0x4
+def char_index_number():
+    global CHAR_INDEX_NUMBER
+    CHAR_INDEX_NUMBER += CHAR_OFFSET
+    return CHAR_INDEX_NUMBER
+
 def guide(ctx: Context):
+    global CHAR_INDEX_NUMBER, COUNT_TO_CHAR
+    CHAR_INDEX_NUMBER = 0x0030
+    COUNT_TO_CHAR = {}
     reset_cache = False
     cache = ctx.cache[f"{NAMESPACE}_guide"]
     if not reset_cache:
@@ -80,17 +90,6 @@ def guide(ctx: Context):
     create_loot_table(ctx, pages)
 
 
-
-
-
-CHAR_INDEX_NUMBER = 0x0030
-CHAR_OFFSET = 0x4
-def char_index_number():
-    global CHAR_INDEX_NUMBER
-    CHAR_INDEX_NUMBER += CHAR_OFFSET
-    return CHAR_INDEX_NUMBER
-
-COUNT_TO_CHAR = {}
 
 
 def create_font(ctx: Context, ITEMS: list[VanillaItem | Item]):
