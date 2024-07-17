@@ -410,7 +410,7 @@ class Mineral:
                 block_properties=subitem.block_properties,
                 is_cookable=subitem.is_cookable,
                 is_armor=isinstance(subitem, SubItemArmor),
-                )
+                ).export(ctx)
 
         self.generate_crafting_recipes(ctx)
         return self
