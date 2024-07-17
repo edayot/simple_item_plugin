@@ -20,7 +20,6 @@ import json
 
 ItemType = Union[Item, "VanillaItem"]
 
-VanillaRegistry : dict[str, "VanillaItem"] = {}
 ShapedRecipeRegistry : dict[ItemType, "ShapedRecipe"] = {}
 
 @dataclass
@@ -28,15 +27,6 @@ class VanillaItem:
     id: str
     def __hash__(self) -> int:
         return hash(self.id)
-    
-    def __new__(cls, id: str, char_index: int = None, page_index: int = -1):
-        if id in VanillaRegistry:
-            return VanillaRegistry[id]
-        return super().__new__(cls)
-
-    def __post_init__(self):
-        VanillaRegistry[self.id] = self
-    
 
 
     def to_nbt(self, i: int):

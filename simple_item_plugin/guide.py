@@ -1,5 +1,5 @@
 from simple_item_plugin.item import Item
-from simple_item_plugin.crafting import VanillaRegistry, VanillaItem, ShapedRecipeRegistry
+from simple_item_plugin.crafting import VanillaItem, ShapedRecipeRegistry
 from beet import Context, Texture, Font, ItemModifier, LootTable
 from model_resolver import beet_default as model_resolver
 from PIL import Image, ImageDraw, ImageFont
@@ -7,12 +7,28 @@ from simple_item_plugin.utils import NAMESPACE
 import json
 import pathlib
 from dataclasses import dataclass
+from typing import Iterable
 
 @dataclass
 class GuideItem:
     item : Item | VanillaItem
     char_index : int = 0
     page_index : int = -1
+
+    def __hash__(self):
+        return hash(self.item)
+
+
+def get_item_list() -> dict[str, GuideItem]:
+    items = dict()
+    items["minecraft:air"] = GuideItem(VanillaItem("minecraft:air"))
+    for recipe in ShapedRecipeRegistry.values():
+        for row in recipe.items:
+            for item in row:
+                if item:
+                    items[item.id] = GuideItem(item)
+        items[recipe.result[0].id] = GuideItem(recipe.result[0])
+    return items
 
 
 
@@ -51,15 +67,12 @@ def guide(ctx: Context):
         cache.clear()
     
     air = VanillaItem("minecraft:air")
-    custom_items = ctx.meta["registry"]["items"].values()
-    vanilla_items = VanillaRegistry.values()
     # Render the registry
-    all_items : list[GuideItem] = [GuideItem(item) for item in custom_items] + [GuideItem(item) for item in vanilla_items]
-    filter : list[str] = [i.item.model_path for i in all_items]
-    ctx.meta["model_resolver"]["filter"] = filter
+    all_items= get_item_list()
+    ctx.meta["model_resolver"]["filter"] = [i.item.model_path for i in all_items.values()]
     model_resolver(ctx)
     cache.json["textures"] = []
-    for item in all_items:
+    for item in all_items.values():
         model_path = item.item.model_path
         path = f"{NAMESPACE}:render/{model_path.replace(':', '/')}"
         if not path in ctx.assets.textures:
@@ -74,7 +87,7 @@ def guide(ctx: Context):
             img.save(f, "PNG")
         cache.json["textures"].append(path)
 
-    create_font(ctx, all_items)
+    create_font(ctx, all_items.values())
     font_path = f"{NAMESPACE}:pages"
     font = ctx.assets.fonts[font_path].data
     with open(cache.get_path(font_path), "w") as f:
@@ -83,14 +96,25 @@ def guide(ctx: Context):
     cache.json["fonts"].append(font_path)
     pages = []
     page_index = 0
-    for item in all_items:
+    for id, item in all_items.items():
         if not (craft := ShapedRecipeRegistry.get(item.item)):
             continue
         item.page_index = page_index
         page_index += 1
+        items_craft = [
+            [
+                all_items[i.id] if i else all_items["minecraft:air"]
+                for i in row
+            ]
+            for row in craft.items
+        ]
+        if (n := len(items_craft)) < 3:
+            for i in range(3-n):
+                items_craft.append([all_items["minecraft:air"]]*3)
+        item_result = all_items[craft.result[0].id]
         pages.append(generate_craft(
-            craft.items,
-            craft.result[0],
+            items_craft,
+            item_result,
             craft.result[1]
         ))
     create_loot_table(ctx, pages)
@@ -98,7 +122,7 @@ def guide(ctx: Context):
 
 
 
-def create_font(ctx: Context, items: list[GuideItem]):
+def create_font(ctx: Context, items: Iterable[GuideItem]):
     global CHAR_INDEX_NUMBER
     font_path = f"{NAMESPACE}:pages"
     release = '_release'
@@ -168,8 +192,8 @@ def create_font(ctx: Context, items: list[GuideItem]):
 
 
 
-def get_item_json(item: Item | VanillaItem, font_path: str, char : str = "\uef01"):
-    if item.minimal_representation.get("id") == "minecraft:air":
+def get_item_json(item: GuideItem, font_path: str, char : str = "\uef01"):
+    if item.item.minimal_representation.get("id") == "minecraft:air":
         return {
             "text":char,
             "font":font_path,
@@ -180,22 +204,20 @@ def get_item_json(item: Item | VanillaItem, font_path: str, char : str = "\uef01
             "text":char,
             "font":font_path,
             "color":"white",
-            "hoverEvent":{"action":"show_item","contents": item.minimal_representation}
+            "hoverEvent":{"action":"show_item","contents": item.item.minimal_representation}
         }
     return {
         "text":char,
         "font":font_path,
         "color":"white",
-        "hoverEvent":{"action":"show_item","contents": item.minimal_representation},
+        "hoverEvent":{"action":"show_item","contents": item.item.minimal_representation},
         "clickEvent":{"action":"change_page","value":f"{item.page_index}"}
     }
 
-def generate_craft(craft: list[list[GuideItem]], result: Item, count: int):
-    if len(craft) != 3:
-        craft.append([None, None, None])
+def generate_craft(craft: list[list[GuideItem]], result: GuideItem, count: int):
     # Create a font for the page
     font_path = f'{NAMESPACE}:pages'
-    page = [""]
+    page : list[str | dict] = [""]
     page.append({
         "text":f"\n\uef13 \uef14\n",
         "font":font_path,
@@ -207,9 +229,6 @@ def generate_craft(craft: list[list[GuideItem]], result: Item, count: int):
             page.append({"text":"\uef00\uef00","font":font_path,"color":"white"})
             for j in range(3):
                 item = craft[i][j]
-                if item is None:
-                    item = VanillaRegistry.get("minecraft:air")
-                    craft[i][j] = item
                 char_item = f"\\u{item.char_index + i:04x}".encode().decode("unicode_escape")
                 page.append(get_item_json(item, font_path, f'\uef03{char_item}\uef03' if e == 0 else "\uef01"))
             if (i == 0 and e == 1) or (i == 2 and e == 0):
@@ -260,7 +279,7 @@ def image_count(count: int) -> Image.Image:
 
 
 
-def create_loot_table(ctx: Context, pages: list[str]):
+def create_loot_table(ctx: Context, pages: Iterable[str]):
     item_modifier_path = f"{NAMESPACE}:impl/guide_modifier"
     loot_table = {
         "pools": [

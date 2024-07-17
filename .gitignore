@@ -10,5 +10,6 @@ _build/
 !releases/included/*.zip
 !releases/included/none/pack.mcmeta
 .env
+.mypy_cache/
 
 build
