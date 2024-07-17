@@ -39,14 +39,14 @@ class Item:
     id: str
     # the translation key, the
     item_name: TextComponent | TranslatedString
-    lore: list[TextComponent_base] = field(default_factory=list)
+    lore: list[TranslatedString] = field(default_factory=list)
 
     components_extra: dict[str, Any] = field(default_factory=dict)
 
     base_item: str = "minecraft:jigsaw"
     custom_model_data: int = 1430000
 
-    block_properties: BlockProperties = None
+    block_properties: BlockProperties | None = None
     is_cookable: bool = False
     is_armor: bool = False
 
@@ -127,7 +127,7 @@ class Item:
 
     def create_translation(self, ctx: Context):
         # add the translations to the languages files for item_name
-        if not isinstance(self.item_name, dict):
+        if isinstance(self.item_name, tuple):
             export_translated_string(ctx, self.item_name)
 
         # add the translations to the languages files for lore
@@ -142,11 +142,11 @@ class Item:
         return lore
 
     def create_custom_data(self):
-        res = {
+        res : dict[str, Any] = {
             "smithed": {"id": self.namespace_id},
         }
         if self.is_cookable:
-            res["nbt_smelting"] = Byte(1)
+            res["nbt_smelting"] = 1
         if self.block_properties:
             res["smithed"]["block"] = {"id": self.namespace_id}
         return res
@@ -159,7 +159,7 @@ class Item:
         self.handle_world_generation(ctx)
 
     def handle_world_generation(self, ctx: Context):
-        if not self.block_properties.get("world_generation", None):
+        if not self.block_properties or "world_generation" not in self.block_properties:
             return
         for i, world_gen in enumerate(self.block_properties["world_generation"]):
             registry = f"{NAMESPACE}:impl/load_worldgen"
@@ -219,6 +219,8 @@ execute
 
     
     def create_custom_block_placement(self, ctx: Context):
+        if not self.block_properties:
+            return
         smithed_function_tag_id = f"custom_block_ext:event/on_place"
         internal_function_id = f"{NAMESPACE}:impl/custom_block_ext/on_place"
         if smithed_function_tag_id not in ctx.data.function_tags:
@@ -266,6 +268,8 @@ prepend function ./on_place/{self.id}/place_entity:
         )
     
     def create_custom_block_destroy(self, ctx: Context):
+        if not self.block_properties:
+            return
         destroy_function_id = f"{NAMESPACE}:impl/blocks/destroy/{self.id}"
         if destroy_function_id not in ctx.data.functions:
             ctx.data.functions[destroy_function_id] = Function()
@@ -359,20 +363,21 @@ kill @s
         # create the custom model
         if self.model_path in ctx.assets.models:
             return
-        if not self.block_properties and not self.is_armor:
-            ctx.assets.models[self.model_path] = Model(
-                {"parent": "item/generated", "textures": {"layer0": self.model_path}}
-            )
-        elif not self.block_properties and self.is_armor:
-            ctx.assets.models[self.model_path] = Model(
-                {
-                    "parent": "item/generated",
-                    "textures": {
-                        "layer0": f"{NAMESPACE}:item/clear",
-                        "layer1": self.model_path,
-                    },
-                }
-            )
+        if not self.block_properties:
+            if not self.is_armor:
+                ctx.assets.models[self.model_path] = Model(
+                    {"parent": "item/generated", "textures": {"layer0": self.model_path}}
+                )
+            else:
+                ctx.assets.models[self.model_path] = Model(
+                    {
+                        "parent": "item/armor",
+                        "textures": {
+                            "layer1": f"{NAMESPACE}:item/clear",
+                            "layer2": self.model_path,
+                        },
+                    }
+                )
         elif self.block_properties.get("all_same_faces", True):
             ctx.assets.models[self.model_path] = Model(
                 {

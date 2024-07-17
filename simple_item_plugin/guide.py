@@ -300,8 +300,7 @@ def create_loot_table(ctx: Context, pages: Iterable[str]):
             }
         ]
     }
-    item_modifier = [
-        {
+    item_modifier = {
             "function": "minecraft:set_components",
             "components": {
                 "minecraft:written_book_content": {
@@ -327,7 +326,6 @@ def create_loot_table(ctx: Context, pages: Iterable[str]):
                 ]
             }
         }
-    ]
 
     ctx.data.item_modifiers[item_modifier_path] = ItemModifier(item_modifier)
 

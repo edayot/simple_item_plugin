@@ -27,25 +27,25 @@ class AttributeModifier(TypedDict):
 class TypingSubItem(TypedDict):
     translation: TranslatedString
     custom_model_data_offset: int
-    block_properties: BlockProperties
-    is_cookable: bool
-    additional_attributes: dict[str, AttributeModifier]
+    is_cookable: NotRequired[bool]
+    additional_attributes: NotRequired[dict[str, AttributeModifier]]
 
 
 class TypingDamagable(TypingSubItem):
-    max_damage: int
+    max_damage: NotRequired[int]
 
 class TypingToolArgs(TypingDamagable):
-    attack_damage: float
-    attack_speed: float
-    speed: float
-    tier: Literal["wooden", "stone", "iron", "golden", "diamond", "netherite"]
+    attack_damage: NotRequired[float]
+    attack_speed: NotRequired[float]
+    speed: NotRequired[float]
+    tier: NotRequired[Literal["wooden", "stone", "iron", "golden", "diamond", "netherite"]]
 
 class TypingArmorArgs(TypingDamagable):
-    armor: float
-    armor_toughness: float
+    armor: NotRequired[float]
+    armor_toughness: NotRequired[float]
+    type: Literal["helmet", "chestplate", "leggings", "boots"]
 
-class TypingSubItemBlock(TypedDict):
+class TypingSubItemBlock(TypingSubItem):
     block_properties: BlockProperties
 
 
@@ -53,7 +53,7 @@ class TypingSubItemBlock(TypedDict):
 class SubItem(BaseModel):
     translation: TranslatedString
     custom_model_data_offset: int
-    block_properties: BlockProperties = None
+    block_properties: BlockProperties | None = None
     is_cookable: bool = False
 
     additional_attributes: dict[str, AttributeModifier] = field(default_factory=lambda: {})
@@ -65,7 +65,7 @@ class SubItem(BaseModel):
             "color": "white",
         }
 
-    def get_components(self):
+    def get_components(self) -> dict[str, Any]:
         return {
             "minecraft:attribute_modifiers": {
                 "modifiers": [
@@ -381,24 +381,23 @@ class Mineral:
                 continue
             if item in DEFAULT_MINERALS_BLOCK_ARGS.keys():
                 args = DEFAULT_MINERALS_BLOCK_ARGS[item]
-                args.update(self.items[item])
+                args.update(self.items[item]) # type: ignore
                 subitem = SubItemBlock(**args)
             elif item in DEFAULT_MINERALS_ITEM_ARGS.keys():
                 args = DEFAULT_MINERALS_ITEM_ARGS[item]
-                args.update(self.items[item])
+                args.update(self.items[item]) # type: ignore
                 subitem = SubItem(**args)
             elif item in DEFAULT_TOOLS_ARGS.keys():
-                args = DEFAULT_TOOLS_ARGS[item]
-                args.update(self.items[item])
-                args["type"] = item
-                subitem = SubItemTool(**args)
+                args = DEFAULT_TOOLS_ARGS[item] # type: ignore
+                args.update(self.items[item]) # type: ignore
+                subitem = SubItemTool(**args) # type: ignore
             elif item in DEFAULT_ARMOR_ARGS.keys():
                 args = DEFAULT_ARMOR_ARGS[item]
-                args.update(self.items[item])
+                args.update(self.items[item]) # type: ignore
                 subitem = SubItemArmor(**args)
             else:
                 args = self.items[item]
-                subitem = SubItem(**args)
+                subitem = SubItem(**args) # type: ignore
             subitem.export(ctx)
             Item(
                 id=f"{self.id}_{item}",
