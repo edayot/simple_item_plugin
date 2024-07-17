@@ -5,7 +5,7 @@ from typing import Any, Literal
 from typing_extensions import TypedDict, NotRequired
 from simple_item_plugin.utils import export_translated_string
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
-from simple_item_plugin.item import Item, BlockProperties, Registry
+from simple_item_plugin.item import Item, BlockProperties
 from simple_item_plugin.crafting import ShapedRecipe, ShapelessRecipe, NBTSmelting, VanillaItem, SimpledrawerMaterial
 
 from pydantic import BaseModel
@@ -415,18 +415,18 @@ class Mineral:
         self.generate_crafting_recipes(ctx)
         return self
 
-    def get_item(self, item: str):
-        return Registry.get(f"{self.id}_{item}", None)
+    def get_item(self, ctx: Context, item: str):
+        return ctx.meta.get("registry",{}).get("items",{}).get(f"{self.id}_{item}", None)
 
     def generate_crafting_recipes(self, ctx: Context):
-        block = self.get_item("block")
-        raw_ore_block = self.get_item("raw_ore_block")
-        ingot = self.get_item("ingot")
-        nugget = self.get_item("nugget")
-        raw_ore = self.get_item("raw_ore")
-        ore = self.get_item("ore")
-        deepslate_ore = self.get_item("deepslate_ore")
-        dust = self.get_item("dust")
+        block = self.get_item(ctx, "block")
+        raw_ore_block = self.get_item(ctx, "raw_ore_block")
+        ingot = self.get_item(ctx, "ingot")
+        nugget = self.get_item(ctx, "nugget")
+        raw_ore = self.get_item(ctx, "raw_ore")
+        ore = self.get_item(ctx, "ore")
+        deepslate_ore = self.get_item(ctx, "deepslate_ore")
+        dust = self.get_item(ctx, "dust")
 
         SimpledrawerMaterial(
             block=block,
@@ -516,7 +516,7 @@ class Mineral:
         stick = VanillaItem("minecraft:stick")
         stick = VanillaItem("minecraft:stick")
 
-        if pickaxe := self.get_item("pickaxe"):
+        if pickaxe := self.get_item(ctx, "pickaxe"):
             ShapedRecipe(
                 items=[
                     [ingot, ingot, ingot],
@@ -525,7 +525,7 @@ class Mineral:
                 ],
                 result=(pickaxe, 1),
             ).export(ctx)
-        if axe := self.get_item("axe"):
+        if axe := self.get_item(ctx, "axe"):
             ShapedRecipe(
                 items=[
                     [ingot, ingot, None],
@@ -534,7 +534,7 @@ class Mineral:
                 ],
                 result=(axe, 1),
             ).export(ctx)
-        if shovel := self.get_item("shovel"):
+        if shovel := self.get_item(ctx, "shovel"):
             ShapedRecipe(
                 items=[
                     [ingot, None, None],
@@ -543,7 +543,7 @@ class Mineral:
                 ],
                 result=(shovel, 1),
             ).export(ctx)
-        if hoe := self.get_item("hoe"):
+        if hoe := self.get_item(ctx, "hoe"):
             ShapedRecipe(
                 items=[
                     [ingot, ingot, None],
@@ -552,7 +552,7 @@ class Mineral:
                 ],
                 result=(hoe, 1),
             ).export(ctx)
-        if sword := self.get_item("sword"):
+        if sword := self.get_item(ctx, "sword"):
             ShapedRecipe(
                 items=[
                     [ingot, None, None],
@@ -561,7 +561,7 @@ class Mineral:
                 ],
                 result=(sword, 1),
             ).export(ctx)
-        if helmet := self.get_item("helmet"):
+        if helmet := self.get_item(ctx, "helmet"):
             ShapedRecipe(
                 items=[
                     [ingot, ingot, ingot],
@@ -570,7 +570,7 @@ class Mineral:
                 ],
                 result=(helmet, 1),
             ).export(ctx)
-        if chestplate := self.get_item("chestplate"):
+        if chestplate := self.get_item(ctx, "chestplate"):
             ShapedRecipe(
                 items=[
                     [ingot, None, ingot],
@@ -579,7 +579,7 @@ class Mineral:
                 ],
                 result=(chestplate, 1),
             ).export(ctx)
-        if leggings := self.get_item("leggings"):
+        if leggings := self.get_item(ctx, "leggings"):
             ShapedRecipe(
                 items=[
                     [ingot, ingot, ingot],
@@ -588,7 +588,7 @@ class Mineral:
                 ],
                 result=(leggings, 1),
             ).export(ctx)
-        if boots := self.get_item("boots"):
+        if boots := self.get_item(ctx, "boots"):
             ShapedRecipe(
                 items=[
                     [ingot, None, ingot],

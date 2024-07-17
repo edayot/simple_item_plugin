@@ -11,9 +11,6 @@ from nbtlib import serialize_tag
 import json
 
 
-Registry: dict[str, "Item"] = {}
-
-
 class WorldGenerationParams(TypedDict):
     min_y: int
     max_y: int
@@ -80,11 +77,6 @@ class Item:
     def __hash__(self):
         return hash(self.id)
     
-
-
-    def __post_init__(self):
-        assert self.id not in Registry, f"Item {self.id} already exists"
-        Registry[self.id] = self
 
     def result_command(self, count: int, type : str = "block", slot : int = 16) -> str:
         if count == 1:
@@ -409,3 +401,8 @@ kill @s
         self.create_translation(ctx)
         self.create_custom_block(ctx)
         self.create_assets(ctx)
+
+        # add the item to the registry
+        assert self.id not in ctx.meta.setdefault("registry", {}).setdefault("items", {})
+        ctx.meta["registry"]["items"][self.id] = self
+        return self

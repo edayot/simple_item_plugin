@@ -1,4 +1,4 @@
-from simple_item_plugin.item import Registry, Item
+from simple_item_plugin.item import Item
 from simple_item_plugin.crafting import VanillaRegistry, VanillaItem, ShapedRecipeRegistry
 from beet import Context, Texture, Font, ItemModifier, LootTable
 from model_resolver import beet_default as model_resolver
@@ -45,7 +45,7 @@ def guide(ctx: Context):
         cache.clear()
     
     air = VanillaItem("minecraft:air")
-    items = Registry.values()
+    items = ctx.meta.get("registry",{}).get("items",{}).values()
     vanilla_items = VanillaRegistry.values()
     # Render the registry
     filter : list[str] = [r.model_path for r in items] + [r.model_path for r in vanilla_items]
