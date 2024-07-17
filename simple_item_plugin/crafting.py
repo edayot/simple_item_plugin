@@ -26,10 +26,6 @@ ShapedRecipeRegistry : dict[ItemType, "ShapedRecipe"] = {}
 @dataclass
 class VanillaItem:
     id: str
-    char_index: int = None
-    page_index: int = -1
-
-
     def __hash__(self) -> int:
         return hash(self.id)
     

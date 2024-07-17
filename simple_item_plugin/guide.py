@@ -6,7 +6,13 @@ from PIL import Image, ImageDraw, ImageFont
 from simple_item_plugin.utils import NAMESPACE
 import json
 import pathlib
+from dataclasses import dataclass
 
+@dataclass
+class GuideItem:
+    item : Item | VanillaItem
+    char_index : int = 0
+    page_index : int = -1
 
 
 
@@ -45,16 +51,16 @@ def guide(ctx: Context):
         cache.clear()
     
     air = VanillaItem("minecraft:air")
-    items = ctx.meta.get("registry",{}).get("items",{}).values()
+    custom_items = ctx.meta["registry"]["items"].values()
     vanilla_items = VanillaRegistry.values()
     # Render the registry
-    filter : list[str] = [r.model_path for r in items] + [r.model_path for r in vanilla_items]
-    all_items : list[VanillaItem | Item] = list(items) + list(vanilla_items)
+    all_items : list[GuideItem] = [GuideItem(item) for item in custom_items] + [GuideItem(item) for item in vanilla_items]
+    filter : list[str] = [i.item.model_path for i in all_items]
     ctx.meta["model_resolver"]["filter"] = filter
     model_resolver(ctx)
     cache.json["textures"] = []
     for item in all_items:
-        model_path = item.model_path
+        model_path = item.item.model_path
         path = f"{NAMESPACE}:render/{model_path.replace(':', '/')}"
         if not path in ctx.assets.textures:
             img = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
@@ -77,8 +83,8 @@ def guide(ctx: Context):
     cache.json["fonts"].append(font_path)
     pages = []
     page_index = 0
-    for item in items:
-        if not (craft := ShapedRecipeRegistry.get(item)):
+    for item in all_items:
+        if not (craft := ShapedRecipeRegistry.get(item.item)):
             continue
         item.page_index = page_index
         page_index += 1
@@ -92,7 +98,7 @@ def guide(ctx: Context):
 
 
 
-def create_font(ctx: Context, ITEMS: list[VanillaItem | Item]):
+def create_font(ctx: Context, items: list[GuideItem]):
     global CHAR_INDEX_NUMBER
     font_path = f"{NAMESPACE}:pages"
     release = '_release'
@@ -117,10 +123,10 @@ def create_font(ctx: Context, ITEMS: list[VanillaItem | Item]):
         { "type": "bitmap", "file": f"{NAMESPACE}:item/logo/modrinth.png",				        "ascent": 7, "height": 25, "chars": ["\uee04"] },
         ],
     })
-    for item in ITEMS:
+    for item in items:
         if not item.char_index:
             item.char_index = char_index_number()
-        render = f"{NAMESPACE}:render/{item.model_path.replace(':','/')}"
+        render = f"{NAMESPACE}:render/{item.item.model_path.replace(':','/')}"
         for i in range(3):
             char_item = f"\\u{item.char_index+i:04x}".encode().decode("unicode_escape")
             ctx.assets.fonts[font_path].data["providers"].append(
@@ -184,7 +190,7 @@ def get_item_json(item: Item | VanillaItem, font_path: str, char : str = "\uef01
         "clickEvent":{"action":"change_page","value":f"{item.page_index}"}
     }
 
-def generate_craft(craft: list[list[Item| VanillaItem]], result: Item, count: int):
+def generate_craft(craft: list[list[GuideItem]], result: Item, count: int):
     if len(craft) != 3:
         craft.append([None, None, None])
     # Create a font for the page
