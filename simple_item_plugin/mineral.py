@@ -398,8 +398,8 @@ class Mineral:
         return self
 
     def get_item(self, ctx: Context, item: str):
-        return ctx.meta.get("registry",{}).get("items",{}).get(f"{self.id}_{item}", None)
-
+        return Item.get_from_id(ctx, f"{self.id}_{item}")
+    
     def generate_crafting_recipes(self, ctx: Context):
         block = self.get_item(ctx, "block")
         raw_ore_block = self.get_item(ctx, "raw_ore_block")

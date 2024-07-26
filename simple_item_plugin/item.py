@@ -414,3 +414,7 @@ kill @s
         assert self.id not in ctx.meta.setdefault("registry", {}).setdefault("items", {})
         ctx.meta["registry"]["items"][self.id] = self
         return self
+
+    @classmethod
+    def get_from_id(cls, ctx: Context, id: str) -> Optional["Item"]:
+        return ctx.meta["registry"]["items"].get(id, None)
