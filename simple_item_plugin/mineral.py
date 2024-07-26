@@ -397,8 +397,11 @@ class Mineral:
         self.generate_crafting_recipes(ctx)
         return self
 
-    def get_item(self, ctx: Context, item: str):
-        return Item.get_from_id(ctx, f"{self.id}_{item}")
+    def get_item(self, ctx: Context, id: str) -> Item:
+        item = Item.get_from_id(ctx, f"{self.id}_{id}")
+        if item is None:
+            raise ValueError(f"Item {id} not found")
+        return item
     
     def generate_crafting_recipes(self, ctx: Context):
         block = self.get_item(ctx, "block")
