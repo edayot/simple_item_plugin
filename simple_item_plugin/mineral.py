@@ -1,4 +1,4 @@
-from beet import Context, Texture
+from beet import Context, Texture, ResourcePack
 from dataclasses import dataclass, field
 
 from typing import Any, Literal, get_args, Optional
@@ -321,21 +321,19 @@ class Mineral:
         minecraft_layer_1_path = "minecraft:models/armor/leather_layer_1"
         minecraft_layer_2_path = "minecraft:models/armor/leather_layer_2"
 
-        if minecraft_layer_1_path not in ctx.assets.textures or minecraft_layer_2_path not in ctx.assets.textures:
-            fancyPants_layer_1_path = pathlib.Path(__file__).parent / "assets" / "fancyPants" / "leather_layer_1.png"
-            fancyPants_layer_2_path = pathlib.Path(__file__).parent / "assets" / "fancyPants" / "leather_layer_2.png"
-            fancyPants_layer_1 = Image.open(fancyPants_layer_1_path).convert("RGBA")
-            fancyPants_layer_2 = Image.open(fancyPants_layer_2_path).convert("RGBA")
-        else:
-            fancyPants_layer_1 : Image.Image = ctx.assets.textures[minecraft_layer_1_path].image
-            fancyPants_layer_2 : Image.Image = ctx.assets.textures[minecraft_layer_2_path].image
+        fancyPants_layer_1_path = pathlib.Path(__file__).parent / "assets" / "fancyPants" / "leather_layer_1.png"
+        fancyPants_layer_2_path = pathlib.Path(__file__).parent / "assets" / "fancyPants" / "leather_layer_2.png"
+        fancyPants_layer_1 = Image.open(fancyPants_layer_1_path).convert("RGBA")
+        fancyPants_layer_2 = Image.open(fancyPants_layer_2_path).convert("RGBA")
+
 
         new_layer_1 = self.merge_layer(fancyPants_layer_1, layer_1)
         new_layer_2 = self.merge_layer(fancyPants_layer_2, layer_2)
-
-        ctx.assets.textures[minecraft_layer_1_path] = Texture(new_layer_1)
-        ctx.assets.textures[minecraft_layer_2_path] = Texture(new_layer_2)
         
+        rp = ResourcePack()
+        rp.textures[minecraft_layer_1_path] = Texture(new_layer_1)
+        rp.textures[minecraft_layer_2_path] = Texture(new_layer_2)
+        ctx.assets.merge(rp)        
 
 
 
