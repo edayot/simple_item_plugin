@@ -1,6 +1,6 @@
 from simple_item_plugin.item import Item
 from simple_item_plugin.crafting import VanillaItem, ShapedRecipeRegistry
-from beet import Context, Texture, Font, ItemModifier, LootTable
+from beet import Context, Texture, Font, ItemModifier, LootTable, Generator
 from model_resolver import beet_default as model_resolver
 from PIL import Image, ImageDraw, ImageFont
 from simple_item_plugin.utils import NAMESPACE
@@ -43,35 +43,18 @@ def guide(ctx: Context):
     global CHAR_INDEX_NUMBER, COUNT_TO_CHAR
     CHAR_INDEX_NUMBER = 0x0030
     COUNT_TO_CHAR = {}
-    reset_cache = False
-    cache = ctx.cache[f"{NAMESPACE}_guide"]
-    if not reset_cache:
-        namespaced_things = [
-            ("textures",Texture,"assets"),
-            ("fonts",Font,"assets"),
-            ("loot_tables",LootTable,"data"),
-            ("item_modifiers",ItemModifier,"data")
-        ]
-        if all(key[0] in cache.json for key in namespaced_things):
-            for namespaced in namespaced_things:
-                for key in cache.json[namespaced[0]]:
-                    key_version = key.replace(f":impl/", f":v{ctx.project_version}/")
-                    if namespaced[2] == "data":
-                        ctx.data[namespaced[1]][key_version] = namespaced[1](source_path=cache.get_path(key))
-                    elif namespaced[2] == "assets":
-                        ctx.assets[namespaced[1]][key_version] = namespaced[1](source_path=cache.get_path(key))
-                    else:
-                        raise ValueError(f"Invalid namespaced type {namespaced[2]}")
-            return
-    else:
-        cache.clear()
+
+    with ctx.generate.draft() as draft:
+        draft.cache("guide", "guide")
+        generate_guide(ctx, draft)
     
+def generate_guide(ctx: Context, draft: Generator):
+    print("Generating guide")
     air = VanillaItem("minecraft:air")
     # Render the registry
     all_items= get_item_list()
     ctx.meta["model_resolver"]["filter"] = [i.item.model_path for i in all_items.values()]
-    model_resolver(ctx)
-    cache.json["textures"] = []
+    ctx.require(model_resolver)
     for item in all_items.values():
         model_path = item.item.model_path
         path = f"{NAMESPACE}:render/{model_path.replace(':', '/')}"
@@ -82,18 +65,8 @@ def guide(ctx: Context):
         img = img.copy()
         img.putpixel((0,0),(137,137,137,255))
         img.putpixel((img.width-1,img.height-1),(137,137,137,255))
-        ctx.assets.textures[path] = Texture(img.copy())
-        with open(cache.get_path(path), "wb") as f:
-            img.save(f, "PNG")
-        cache.json["textures"].append(path)
-
-    create_font(ctx, all_items.values())
-    font_path = f"{NAMESPACE}:pages"
-    font = ctx.assets.fonts[font_path].data
-    with open(cache.get_path(font_path), "w") as f:
-        json.dump(font, f, indent=4)
-    cache.json["fonts"] = []
-    cache.json["fonts"].append(font_path)
+        draft.assets.textures[path] = Texture(img.copy())
+    create_font(draft, all_items.values())
     pages = []
     page_index = 0
     for id, item in all_items.items():
@@ -117,18 +90,18 @@ def guide(ctx: Context):
             item_result,
             craft.result[1]
         ))
-    create_loot_table(ctx, pages)
+    create_loot_table(draft, pages)
 
 
 
 
-def create_font(ctx: Context, items: Iterable[GuideItem]):
+def create_font(draft: Generator, items: Iterable[GuideItem]):
     global CHAR_INDEX_NUMBER
     font_path = f"{NAMESPACE}:pages"
     release = '_release'
     if False:
         release = ''
-    ctx.assets.fonts[font_path] = Font({
+    draft.assets.fonts[font_path] = Font({
         "providers": [
         {
             "type": "reference",
@@ -153,7 +126,7 @@ def create_font(ctx: Context, items: Iterable[GuideItem]):
         render = f"{NAMESPACE}:render/{item.item.model_path.replace(':','/')}"
         for i in range(3):
             char_item = f"\\u{item.char_index+i:04x}".encode().decode("unicode_escape")
-            ctx.assets.fonts[font_path].data["providers"].append(
+            draft.assets.fonts[font_path].data["providers"].append(
                 {
                     "type": "bitmap",
                     "file": f"{render}.png",
@@ -162,21 +135,17 @@ def create_font(ctx: Context, items: Iterable[GuideItem]):
                     "chars": [char_item]
                 }
             )
-    cache = ctx.cache[f"{NAMESPACE}_guide"]
     for count in range(2,100):
         # Create the image
         img = image_count(count)
         img.putpixel((0,0),(137,137,137,255))
         img.putpixel((img.width-1,img.height-1),(137,137,137,255))
         tex_path = f"{NAMESPACE}:item/font/number/{count}"
-        ctx.assets.textures[tex_path] = Texture(img)
-        with open(cache.get_path(tex_path), "wb") as f:
-            img.save(f, "PNG")
-        cache.json["textures"].append(tex_path)
+        draft.assets.textures[tex_path] = Texture(img)
         char_count = CHAR_INDEX_NUMBER
         CHAR_INDEX_NUMBER += 1
         char_index = f"\\u{char_count:04x}".encode().decode("unicode_escape")
-        ctx.assets.fonts[font_path].data["providers"].append(
+        draft.assets.fonts[font_path].data["providers"].append(
             {
                 "type": "bitmap",
                 "file": tex_path + ".png",
@@ -279,7 +248,7 @@ def image_count(count: int) -> Image.Image:
 
 
 
-def create_loot_table(ctx: Context, pages: Iterable[str]):
+def create_loot_table(draft: Generator, pages: Iterable[str]):
     item_modifier_path = f"{NAMESPACE}:impl/guide_modifier"
     loot_table = {
         "pools": [
@@ -327,19 +296,7 @@ def create_loot_table(ctx: Context, pages: Iterable[str]):
             }
         }
 
-    ctx.data.item_modifiers[item_modifier_path] = ItemModifier(item_modifier)
+    draft.data.item_modifiers[item_modifier_path] = ItemModifier(item_modifier)
 
     loot_table_path = f"{NAMESPACE}:impl/items/guide"
-    ctx.data.loot_tables[loot_table_path] = LootTable(loot_table)
-
-    cache = ctx.cache[f"{NAMESPACE}_guide"]
-    with open(cache.get_path(loot_table_path), "w") as f:
-        json.dump(loot_table, f, indent=4)
-    with open(cache.get_path(item_modifier_path), "w") as f:
-        json.dump(item_modifier, f, indent=4)
-
-    cache.json["loot_tables"] = []
-    cache.json["loot_tables"].append(loot_table_path)
-    cache.json["item_modifiers"] = []
-    cache.json["item_modifiers"].append(item_modifier_path)
-    
+    draft.data.loot_tables[loot_table_path] = LootTable(loot_table)
