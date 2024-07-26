@@ -12,15 +12,13 @@ from nbtlib.tag import (
     Float,
     Double,
 )
-from typing import Any, Literal, Union
+from typing import Any, Literal, Union, Tuple
 from beet import Context, Function, FunctionTag, Recipe
 from simple_item_plugin.item import Item
 from simple_item_plugin.types import NAMESPACE
 import json
 
-ItemType = Union[Item, "VanillaItem"]
 
-ShapedRecipeRegistry : dict[ItemType, "ShapedRecipe"] = {}
 
 @dataclass
 class VanillaItem:
@@ -48,10 +46,14 @@ class VanillaItem:
     def minimal_representation(self) -> dict:
         return {"id": self.id}
 
+ItemType = Union[Item, VanillaItem, None]
+ShapedRecipeRegistry : dict[ItemType, "ShapedRecipe"] = {}
+
+ItemLine = Tuple[ItemType, ItemType, ItemType]
 
 @dataclass
 class ShapedRecipe:
-    items: list[list[Item | VanillaItem | None]]
+    items: Tuple[ItemLine, ItemLine, ItemLine]
     result: tuple[Item | VanillaItem, int]
 
     def __post_init__(self):

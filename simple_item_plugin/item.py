@@ -2,16 +2,17 @@ from dataclasses import dataclass, field
 from simple_item_plugin.types import TextComponent, TextComponent_base, NAMESPACE, TranslatedString
 from beet import Context, FunctionTag, Function, LootTable, Model
 from typing import Any
-from typing_extensions import TypedDict, NotRequired, Literal
+from typing_extensions import TypedDict, NotRequired, Literal, Optional
 from simple_item_plugin.utils import export_translated_string
 from beet.contrib.vanilla import Vanilla
 
 from nbtlib.tag import Compound, String, Byte
 from nbtlib import serialize_tag
 import json
+from pydantic import BaseModel
 
 
-class WorldGenerationParams(TypedDict):
+class WorldGenerationParams(BaseModel):
     min_y: int
     max_y: int
     min_veins: int
@@ -19,26 +20,26 @@ class WorldGenerationParams(TypedDict):
     min_vein_size: int
     max_vein_size: int
     ignore_restrictions: Literal[0, 1]
-    dimension: NotRequired[str]
-    biome: NotRequired[str]
-    biome_blacklist: NotRequired[Literal[0, 1]]
+    dimension: Optional[str] = None
+    biome: Optional[str] = None
+    biome_blacklist: Optional[Literal[0, 1]] = None
 
-class BlockProperties(TypedDict):
+class BlockProperties(BaseModel):
     base_block: str
-    smart_waterlog: NotRequired[bool]
-    all_same_faces: NotRequired[bool]
-    world_generation: NotRequired[list[WorldGenerationParams]]
+    smart_waterlog: Optional[bool] = False
+    all_same_faces: Optional[bool] = True
+    world_generation: Optional[list[WorldGenerationParams]] = None
 
-    base_item_placed: NotRequired[str]
-    custom_model_data_placed: NotRequired[int]
+    base_item_placed: Optional[str] = None
+    custom_model_data_placed: Optional[int] = None
     
 
 
-@dataclass
-class Item:
+
+class Item(BaseModel):
     id: str
     # the translation key, the
-    item_name: TextComponent | TranslatedString
+    item_name: TextComponent | TranslatedString | None = None
     lore: list[TranslatedString] = field(default_factory=list)
 
     components_extra: dict[str, Any] = field(default_factory=dict)
@@ -159,33 +160,33 @@ class Item:
         self.handle_world_generation(ctx)
 
     def handle_world_generation(self, ctx: Context):
-        if not self.block_properties or "world_generation" not in self.block_properties:
+        if not self.block_properties or not self.block_properties.world_generation:
             return
-        for i, world_gen in enumerate(self.block_properties["world_generation"]):
+        for i, world_gen in enumerate(self.block_properties.world_generation):
             registry = f"{NAMESPACE}:impl/load_worldgen"
             if registry not in ctx.data.functions:
                 ctx.data.functions[registry] = Function()
             
             args = Compound()
             command = ""
-            if "dimension" in world_gen:
-                args["dimension"] = String(world_gen["dimension"])
-            if "biome" in world_gen:
-                args["biome"] = String(world_gen["biome"])
-            if "biome_blacklist" in world_gen:
-                args["biome_blacklist"] = Byte(world_gen["biome_blacklist"])
+            if world_gen.dimension:
+                args["dimension"] = String(world_gen.dimension)
+            if world_gen.biome:
+                args["biome"] = String(world_gen.biome)
+            if world_gen.biome_blacklist:
+                args["biome_blacklist"] = Byte(world_gen.biome_blacklist)
             if len(args.keys()) > 0:
                 command = f"data modify storage chunk_scan.ores:registry input set value {serialize_tag(args)}"
 
 
             ctx.data.functions[registry].append(f"""
-scoreboard players set #registry.min_y chunk_scan.ores.data {world_gen["min_y"]}
-scoreboard players set #registry.max_y chunk_scan.ores.data {world_gen["max_y"]}
-scoreboard players set #registry.min_veins chunk_scan.ores.data {world_gen["min_veins"]}
-scoreboard players set #registry.max_veins chunk_scan.ores.data {world_gen["max_veins"]}
-scoreboard players set #registry.min_vein_size chunk_scan.ores.data {world_gen["min_vein_size"]}
-scoreboard players set #registry.max_vein_size chunk_scan.ores.data {world_gen["max_vein_size"]}
-scoreboard players set #registry.ignore_restrictions chunk_scan.ores.data {world_gen["ignore_restrictions"]}
+scoreboard players set #registry.min_y chunk_scan.ores.data {world_gen.min_y}
+scoreboard players set #registry.max_y chunk_scan.ores.data {world_gen.max_y}
+scoreboard players set #registry.min_veins chunk_scan.ores.data {world_gen.min_veins}
+scoreboard players set #registry.max_veins chunk_scan.ores.data {world_gen.max_veins}
+scoreboard players set #registry.min_vein_size chunk_scan.ores.data {world_gen.min_vein_size}
+scoreboard players set #registry.max_vein_size chunk_scan.ores.data {world_gen.max_vein_size}
+scoreboard players set #registry.ignore_restrictions chunk_scan.ores.data {world_gen.ignore_restrictions}
 
 {command}
 
@@ -232,9 +233,9 @@ execute
         if internal_function_id not in ctx.data.functions:
             ctx.data.functions[internal_function_id] = Function("# @public\n\n")
         
-        placement_code = f"setblock ~ ~ ~ {self.block_properties['base_block']}"
-        if self.block_properties.get("smart_waterlog", False):
-            placement_code = f"setblock ~ ~ ~ {self.block_properties['base_block']}[waterlogged=false]"
+        placement_code = f"setblock ~ ~ ~ {self.block_properties.base_block}"
+        if self.block_properties.smart_waterlog:
+            placement_code = f"setblock ~ ~ ~ {self.block_properties.base_block}[waterlogged=false]"
 
         ctx.data.functions[internal_function_id].append(
             f"""
@@ -251,15 +252,15 @@ execute
 prepend function ./on_place/{self.id}/place_entity:
     tag @s add {NAMESPACE}.{self.id}
     tag @s add {NAMESPACE}.block
-    tag @s add {NAMESPACE}.block.{self.block_properties["base_block"].replace("minecraft:", "")}
+    tag @s add {NAMESPACE}.block.{self.block_properties.base_block.replace("minecraft:", "")}
     tag @s add smithed.block
     tag @s add smithed.strict
     tag @s add smithed.entity
 
     data modify entity @s item set value {{
-        id:"{self.block_properties.get("base_item_placed") or self.base_item}",
+        id:"{self.block_properties.base_item_placed or self.base_item}",
         count:1,
-        components:{{"minecraft:custom_model_data":{self.block_properties.get("custom_model_data_placed") or self.custom_model_data}}}
+        components:{{"minecraft:custom_model_data":{self.block_properties.custom_model_data_placed or self.custom_model_data}}}
     }}
 
     data merge entity @s {{transformation:{{scale:[1.001f,1.001f,1.001f]}}}}
@@ -275,7 +276,7 @@ prepend function ./on_place/{self.id}/place_entity:
             ctx.data.functions[destroy_function_id] = Function()
         ctx.data.functions[destroy_function_id].prepend(f"""
 execute
-    as @e[type=item,nbt={{Item:{{id:"{self.block_properties["base_block"]}",count:1}}}},limit=1,sort=nearest,distance=..3]
+    as @e[type=item,nbt={{Item:{{id:"{self.block_properties.base_block}",count:1}}}},limit=1,sort=nearest,distance=..3]
     run function ~/spawn_item:
         loot spawn ~ ~ ~ loot {self.loot_table_path}
         kill @s
@@ -283,7 +284,7 @@ execute
 kill @s
 
 """)
-        all_same_function_id = f"{NAMESPACE}:impl/blocks/destroy_{self.block_properties['base_block'].replace('minecraft:', '')}"
+        all_same_function_id = f"{NAMESPACE}:impl/blocks/destroy_{self.block_properties.base_block.replace('minecraft:', '')}"
         if all_same_function_id not in ctx.data.functions:
             ctx.data.functions[all_same_function_id] = Function()
         ctx.data.functions[all_same_function_id].append(
@@ -378,7 +379,7 @@ kill @s
                         },
                     }
                 )
-        elif self.block_properties.get("all_same_faces", True):
+        elif self.block_properties.all_same_faces:
             ctx.assets.models[self.model_path] = Model(
                 {
                     "parent": "minecraft:block/cube_all",

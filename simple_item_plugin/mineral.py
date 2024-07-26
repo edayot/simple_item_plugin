@@ -16,6 +16,10 @@ import json
 Mineral_list: list["Mineral"] = []
 ToolType = Literal["pickaxe", "axe", "shovel", "hoe", "sword"]
 ArmorType = Literal["helmet", "chestplate", "leggings", "boots"]
+BlockType = Literal["ore", "deepslate_ore", "raw_ore_block", "block"]
+ItemType = Literal["raw_ore", "ingot", "nugget", "dust"]
+
+TierType = Literal["wooden", "stone", "iron", "golden", "diamond", "netherite"]
 
 
 class AttributeModifier(TypedDict):
@@ -35,15 +39,16 @@ class TypingDamagable(TypingSubItem):
     max_damage: NotRequired[int]
 
 class TypingToolArgs(TypingDamagable):
+    type: ToolType
     attack_damage: NotRequired[float]
     attack_speed: NotRequired[float]
     speed: NotRequired[float]
-    tier: NotRequired[Literal["wooden", "stone", "iron", "golden", "diamond", "netherite"]]
+    tier: NotRequired[TierType]
 
 class TypingArmorArgs(TypingDamagable):
     armor: NotRequired[float]
     armor_toughness: NotRequired[float]
-    type: Literal["helmet", "chestplate", "leggings", "boots"]
+    type: ArmorType
 
 class TypingSubItemBlock(TypingSubItem):
     block_properties: BlockProperties
@@ -92,7 +97,7 @@ class SubItem(BaseModel):
 
 class SubItemBlock(SubItem):
     block_properties: BlockProperties = field(
-        default_factory=lambda: {"base_block":"minecraft:lodestone"}
+        default_factory=lambda: BlockProperties(base_block="minecraft:lodestone")
     )
 
     def get_base_item(self):
@@ -112,7 +117,7 @@ class SubItemDamagable(SubItem):
     
 
 class SubItemArmor(SubItemDamagable):
-    type: Literal["helmet", "chestplate", "leggings", "boots"]
+    type: ArmorType
     armor: float
     armor_toughness: float
 
@@ -188,9 +193,7 @@ class SubItemWeapon(SubItemDamagable):
 
 class SubItemTool(SubItemWeapon):
     type: ToolType
-    tier: Literal[
-        "wooden", "stone", "iron", "golden", "diamond", "netherite"
-    ] = "wooden"
+    tier: TierType
     speed: float = 2.0
 
     def get_components(self):
@@ -225,10 +228,7 @@ class Mineral:
     name: TranslatedString
     custom_model_data: int
 
-    items: dict[ToolType | ArmorType, TypingToolArgs | TypingArmorArgs] = field(default_factory=lambda: {})
-
-    def __post_init__(self):
-        Mineral_list.append(self)
+    items: dict[ToolType | ArmorType | BlockType | ItemType, TypingToolArgs | TypingArmorArgs] = field(default_factory=lambda: {})
 
     def export(self, ctx: Context):
         export_translated_string(ctx, self.name)
@@ -242,7 +242,7 @@ class Mineral:
                     {Lang.en_us: "%s Ore", Lang.fr_fr: "Minerai de %s"},
                 ),
                 "custom_model_data_offset": 0,
-                "block_properties": BlockProperties({"base_block":"minecraft:lodestone"})
+                "block_properties": BlockProperties(base_block="minecraft:lodestone")
             },
             "deepslate_ore": {
                 "translation": (
@@ -250,7 +250,7 @@ class Mineral:
                     {Lang.en_us: "Deepslate %s Ore", Lang.fr_fr: "Minerai de deepslate de %s"},
                 ),
                 "custom_model_data_offset": 1,
-                "block_properties": BlockProperties({"base_block":"minecraft:lodestone"})
+                "block_properties": BlockProperties(base_block="minecraft:lodestone")
             },
             "raw_ore_block": {
                 "translation": (
@@ -258,7 +258,7 @@ class Mineral:
                     {Lang.en_us: "Raw %s Block", Lang.fr_fr: "Bloc brut de %s"},
                 ),
                 "custom_model_data_offset": 5,
-                "block_properties": BlockProperties({"base_block":"minecraft:lodestone"})
+                "block_properties": BlockProperties(base_block="minecraft:lodestone")
             },
             "block": {
                 "translation": (
@@ -266,7 +266,7 @@ class Mineral:
                     {Lang.en_us: "%s Block", Lang.fr_fr: "Bloc de %s"},
                 ),
                 "custom_model_data_offset": 6,
-                "block_properties": BlockProperties({"base_block":"minecraft:lodestone"})
+                "block_properties": BlockProperties(base_block="minecraft:lodestone")
             },
         }
 
@@ -308,6 +308,7 @@ class Mineral:
                     {Lang.en_us: "%s Pickaxe", Lang.fr_fr: "Pioche en %s"},
                 ),
                 "custom_model_data_offset": 10,
+                "type": "pickaxe",
             },
             "axe": {
                 "translation": (
@@ -315,6 +316,7 @@ class Mineral:
                     {Lang.en_us: "%s Axe", Lang.fr_fr: "Hache en %s"},
                 ),
                 "custom_model_data_offset": 11,
+                "type": "axe",
             },
             "shovel": {
                 "translation": (
@@ -322,6 +324,7 @@ class Mineral:
                     {Lang.en_us: "%s Shovel", Lang.fr_fr: "Pelle en %s"},
                 ),
                 "custom_model_data_offset": 12,
+                "type": "shovel",
             },
             "hoe": {
                 "translation": (
@@ -329,6 +332,7 @@ class Mineral:
                     {Lang.en_us: "%s Hoe", Lang.fr_fr: "Houe en %s"},
                 ),
                 "custom_model_data_offset": 13,
+                "type": "hoe",
             },
             "sword": {
                 "translation": (
@@ -336,6 +340,7 @@ class Mineral:
                     {Lang.en_us: "%s Sword", Lang.fr_fr: "Épée en %s"},
                 ),
                 "custom_model_data_offset": 14,
+                "type": "sword",
             },
         }
 
@@ -445,11 +450,11 @@ class Mineral:
             ).export(ctx)
 
             ShapedRecipe(
-                items=[
-                    [raw_ore, raw_ore, raw_ore],
-                    [raw_ore, raw_ore, raw_ore],
-                    [raw_ore, raw_ore, raw_ore],
-                ],
+                items=(
+                    (raw_ore, raw_ore, raw_ore),
+                    (raw_ore, raw_ore, raw_ore),
+                    (raw_ore, raw_ore, raw_ore),
+                ),
                 result=(raw_ore_block, 1),
             ).export(ctx)
 
@@ -465,7 +470,7 @@ class Mineral:
             ).export(ctx)
 
             NBTSmelting(
-            item=ore,
+                item=ore,
                 result=(ingot, 1),
                 types=["furnace", "blast_furnace"],
             ).export(ctx)
@@ -476,22 +481,21 @@ class Mineral:
                 types=["furnace", "blast_furnace"],
             ).export(ctx)
 
-
         ShapedRecipe(
-            items=[
-                [ingot, ingot, ingot],
-                [ingot, ingot, ingot],
-                [ingot, ingot, ingot],
-            ],
+            items=(
+                (ingot, ingot, ingot),
+                (ingot, ingot, ingot),
+                (ingot, ingot, ingot),
+            ),
             result=(block, 1),
         ).export(ctx)
 
         ShapedRecipe(
-            items=[
-                [nugget, nugget, nugget],
-                [nugget, nugget, nugget],
-                [nugget, nugget, nugget],
-            ],
+            items=(
+                (nugget, nugget, nugget),
+                (nugget, nugget, nugget),
+                (nugget, nugget, nugget),
+            ),
             result=(ingot, 1),
         ).export(ctx)
 
@@ -505,7 +509,6 @@ class Mineral:
             result=(ingot, 9),
         ).export(ctx)
 
-
         NBTSmelting(
             item=dust,
             result=(ingot, 2),
@@ -517,84 +520,82 @@ class Mineral:
 
         if pickaxe := self.get_item(ctx, "pickaxe"):
             ShapedRecipe(
-                items=[
-                    [ingot, ingot, ingot],
-                    [None, stick, None],
-                    [None, stick, None],
-                ],
+                items=(
+                    (ingot, ingot, ingot),
+                    (None, stick, None),
+                    (None, stick, None),
+                ),
                 result=(pickaxe, 1),
             ).export(ctx)
         if axe := self.get_item(ctx, "axe"):
             ShapedRecipe(
-                items=[
-                    [ingot, ingot, None],
-                    [ingot, stick, None],
-                    [None, stick, None],
-                ],
+                items=(
+                    (ingot, ingot, None),
+                    (ingot, stick, None),
+                    (None, stick, None),
+                ),
                 result=(axe, 1),
             ).export(ctx)
         if shovel := self.get_item(ctx, "shovel"):
             ShapedRecipe(
-                items=[
-                    [ingot, None, None],
-                    [stick, None, None],
-                    [stick, None, None],
-                ],
+                items=(
+                    (ingot, None, None),
+                    (stick, None, None),
+                    (stick, None, None),
+                ),
                 result=(shovel, 1),
             ).export(ctx)
         if hoe := self.get_item(ctx, "hoe"):
             ShapedRecipe(
-                items=[
-                    [ingot, ingot, None],
-                    [None, stick, None],
-                    [None, stick, None],
-                ],
+                items=(
+                    (ingot, ingot, None),
+                    (None, stick, None),
+                    (None, stick, None),
+                ),
                 result=(hoe, 1),
             ).export(ctx)
         if sword := self.get_item(ctx, "sword"):
             ShapedRecipe(
-                items=[
-                    [ingot, None, None],
-                    [ingot, None, None],
-                    [stick, None, None],
-                ],
+                items=(
+                    (ingot, None, None),
+                    (ingot, None, None),
+                    (stick, None, None),
+                ),
                 result=(sword, 1),
             ).export(ctx)
         if helmet := self.get_item(ctx, "helmet"):
             ShapedRecipe(
-                items=[
-                    [ingot, ingot, ingot],
-                    [ingot, None, ingot],
-                    [None, None, None],
-                ],
+                items=(
+                    (ingot, ingot, ingot),
+                    (ingot, None, ingot),
+                    (None, None, None),
+                ),
                 result=(helmet, 1),
             ).export(ctx)
         if chestplate := self.get_item(ctx, "chestplate"):
             ShapedRecipe(
-                items=[
-                    [ingot, None, ingot],
-                    [ingot, ingot, ingot],
-                    [ingot, ingot, ingot],
-                ],
+                items=(
+                    (ingot, None, ingot),
+                    (ingot, ingot, ingot),
+                    (ingot, ingot, ingot),
+                ),
                 result=(chestplate, 1),
             ).export(ctx)
         if leggings := self.get_item(ctx, "leggings"):
             ShapedRecipe(
-                items=[
-                    [ingot, ingot, ingot],
-                    [ingot, None, ingot],
-                    [ingot, None, ingot],
-                ],
+                items=(
+                    (ingot, ingot, ingot),
+                    (ingot, None, ingot),
+                    (ingot, None, ingot),
+                ),
                 result=(leggings, 1),
             ).export(ctx)
         if boots := self.get_item(ctx, "boots"):
             ShapedRecipe(
-                items=[
-                    [ingot, None, ingot],
-                    [ingot, None, ingot],
-                ],
+                items=(
+                    (ingot, None, ingot),
+                    (ingot, None, ingot),
+                    (None, None, None),
+                ),
                 result=(boots, 1),
             ).export(ctx)
-
-        
-
