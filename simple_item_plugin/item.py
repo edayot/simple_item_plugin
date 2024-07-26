@@ -45,8 +45,13 @@ class Item(BaseModel):
     components_extra: dict[str, Any] = field(default_factory=dict)
 
     base_item: str = "minecraft:jigsaw"
-    custom_model_data: int = 1430000
 
+    def custom_model_data(self, ctx: Context):
+        stable_cache = ctx.meta["simple_item_plugin"]["stable_cache"]
+        if self.id not in stable_cache:
+            stable_cache[self.id] = max(stable_cache.values(), default=ctx.meta["simple_item_plugin"].get("custom_model_data", 0)) + 1
+        return stable_cache[self.id]
+        
     block_properties: BlockProperties | None = None
     is_cookable: bool = False
     is_armor: bool = False
@@ -260,7 +265,7 @@ prepend function ./on_place/{self.id}/place_entity:
     data modify entity @s item set value {{
         id:"{self.block_properties.base_item_placed or self.base_item}",
         count:1,
-        components:{{"minecraft:custom_model_data":{self.block_properties.custom_model_data_placed or self.custom_model_data}}}
+        components:{{"minecraft:custom_model_data":{self.block_properties.custom_model_data_placed or self.custom_model_data(ctx)}}}
     }}
 
     data merge entity @s {{transformation:{{scale:[1.001f,1.001f,1.001f]}}}}
@@ -313,7 +318,7 @@ kill @s
                                     {
                                         "function": "minecraft:set_components",
                                         "components": {
-                                            "minecraft:custom_model_data": self.custom_model_data,
+                                            "minecraft:custom_model_data": self.custom_model_data(ctx),
                                             "minecraft:custom_data": self.create_custom_data(),
                                         },
                                     },
@@ -357,7 +362,7 @@ kill @s
         # add the custom model data to the model
         ctx.assets.models[key].data["overrides"].append(
             {
-                "predicate": {"custom_model_data": self.custom_model_data},
+                "predicate": {"custom_model_data": self.custom_model_data(ctx)},
                 "model": self.model_path,
             }
         )
