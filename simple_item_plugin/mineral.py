@@ -1,7 +1,7 @@
 from beet import Context
 from dataclasses import dataclass, field
 
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 from typing_extensions import TypedDict, NotRequired
 from simple_item_plugin.utils import export_translated_string
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
@@ -19,6 +19,8 @@ ArmorType = Literal["helmet", "chestplate", "leggings", "boots"]
 BlockType = Literal["ore", "deepslate_ore", "raw_ore_block", "block"]
 ItemType = Literal["raw_ore", "ingot", "nugget", "dust"]
 
+AllItemTypes = ToolType | ArmorType | BlockType | ItemType
+
 TierType = Literal["wooden", "stone", "iron", "golden", "diamond", "netherite"]
 
 
@@ -29,6 +31,7 @@ class AttributeModifier(TypedDict):
     slot: str
 
 class TypingSubItem(TypedDict):
+    type: AllItemTypes
     translation: TranslatedString
     is_cookable: NotRequired[bool]
     additional_attributes: NotRequired[dict[str, AttributeModifier]]
@@ -55,6 +58,7 @@ class TypingSubItemBlock(TypingSubItem):
 
 
 class SubItem(BaseModel):
+    type: AllItemTypes
     translation: TranslatedString
     block_properties: BlockProperties | None = None
     is_cookable: bool = False
@@ -121,6 +125,7 @@ class SubItemArmor(SubItemDamagable):
 
     def get_components(self):
         res = super().get_components()
+        res.setdefault("minecraft:attribute_modifiers", {}).setdefault("modifiers", [])
         res["minecraft:attribute_modifiers"]["modifiers"].extend([
             {
                 "type": "minecraft:generic.armor",
@@ -162,30 +167,25 @@ class SubItemWeapon(SubItemDamagable):
 
     def get_components(self):
         res = super().get_components()
-        res.update(
+        res.setdefault("minecraft:attribute_modifiers", {}).setdefault("modifiers", [])
+        res["minecraft:attribute_modifiers"]["modifiers"].extend([
             {
-                "minecraft:attribute_modifiers": {
-                    "modifiers": [
-                        {
-                            "type": "minecraft:generic.attack_damage",
-                            "amount": self.attack_damage,
-                            "name": "Tool modifier",
-                            "operation": "add_value",
-                            "slot": "hand",
-                            "id": f"{NAMESPACE}:attack_damage_{self.translation[0]}",
-                        },
-                        {
-                            "type": "minecraft:generic.attack_speed",
-                            "amount": self.attack_speed-4,
-                            "name": "Tool modifier",
-                            "operation": "add_value",
-                            "slot": "hand",
-                            "id": f"{NAMESPACE}:attack_speed_{self.translation[0]}",
-                        },
-                    ]
-                }
-            }
-        )
+                "type": "minecraft:generic.attack_damage",
+                "amount": self.attack_damage,
+                "name": "Tool modifier",
+                "operation": "add_value",
+                "slot": "hand",
+                "id": f"{NAMESPACE}:attack_damage_{self.translation[0]}",
+            },
+            {
+                "type": "minecraft:generic.attack_speed",
+                "amount": self.attack_speed-4,
+                "name": "Tool modifier",
+                "operation": "add_value",
+                "slot": "hand",
+                "id": f"{NAMESPACE}:attack_speed_{self.translation[0]}",
+            },
+        ])
         return res
 
 
@@ -220,169 +220,73 @@ class SubItemTool(SubItemWeapon):
         return f"minecraft:{self.tier}_{self.type}"
 
 
+
+def get_default_translated_string(name: AllItemTypes):
+    match name:
+        case "ore":
+            return (f"{NAMESPACE}.mineral_name.ore", {Lang.en_us: "%s Ore", Lang.fr_fr: "Minerai de %s"})
+        case "deepslate_ore":
+            return (f"{NAMESPACE}.mineral_name.deepslate_ore", {Lang.en_us: "Deepslate %s Ore", Lang.fr_fr: "Minerai de deepslate de %s"})
+        case "raw_ore_block":
+            return (f"{NAMESPACE}.mineral_name.raw_block", {Lang.en_us: "Raw %s Block", Lang.fr_fr: "Bloc brut de %s"})
+        case "block":
+            return (f"{NAMESPACE}.mineral_name.block", {Lang.en_us: "%s Block", Lang.fr_fr: "Bloc de %s"})
+        case "raw_ore":
+            return (f"{NAMESPACE}.mineral_name.raw_ore", {Lang.en_us: "Raw %s Ore", Lang.fr_fr: "Minerai brut de %s"})
+        case "ingot":
+            return (f"{NAMESPACE}.mineral_name.ingot", {Lang.en_us: "%s Ingot", Lang.fr_fr: "Lingot de %s"})
+        case "nugget":
+            return (f"{NAMESPACE}.mineral_name.nugget", {Lang.en_us: "%s Nugget", Lang.fr_fr: "Pépite de %s"})
+        case "dust":
+            return (f"{NAMESPACE}.mineral_name.dust", {Lang.en_us: "%s Dust", Lang.fr_fr: "Poudre de %s"})
+        case "pickaxe":
+            return (f"{NAMESPACE}.mineral_name.pickaxe", {Lang.en_us: "%s Pickaxe", Lang.fr_fr: "Pioche en %s"})
+        case "axe":
+            return (f"{NAMESPACE}.mineral_name.axe", {Lang.en_us: "%s Axe", Lang.fr_fr: "Hache en %s"})
+        case "shovel":
+            return (f"{NAMESPACE}.mineral_name.shovel", {Lang.en_us: "%s Shovel", Lang.fr_fr: "Pelle en %s"})
+        case "hoe":
+            return (f"{NAMESPACE}.mineral_name.hoe", {Lang.en_us: "%s Hoe", Lang.fr_fr: "Houe en %s"})
+        case "sword":
+            return (f"{NAMESPACE}.mineral_name.sword", {Lang.en_us: "%s Sword", Lang.fr_fr: "Épée en %s"})
+        case "helmet":
+            return (f"{NAMESPACE}.mineral_name.helmet", {Lang.en_us: "%s Helmet", Lang.fr_fr: "Casque en %s"})
+        case "chestplate":
+            return (f"{NAMESPACE}.mineral_name.chestplate", {Lang.en_us: "%s Chestplate", Lang.fr_fr: "Plastron en %s"})
+        case "leggings":
+            return (f"{NAMESPACE}.mineral_name.leggings", {Lang.en_us: "%s Leggings", Lang.fr_fr: "Jambières en %s"})
+        case "boots":
+            return (f"{NAMESPACE}.mineral_name.boots", {Lang.en_us: "%s Boots", Lang.fr_fr: "Bottes en %s"})
+        case _:
+            raise ValueError("Invalid item type")
 @dataclass
 class Mineral:
     id: str
     name: TranslatedString
 
-    items: dict[ToolType | ArmorType | BlockType | ItemType, TypingToolArgs | TypingArmorArgs] = field(default_factory=lambda: {})
+    overrides: dict[AllItemTypes, dict[str, Any]] = field(default_factory=lambda: {})
+
+    armor_additional_attributes: dict[str, AttributeModifier] = field(default_factory=lambda: {})
 
     def export(self, ctx: Context):
         export_translated_string(ctx, self.name)
         self.export_subitem(ctx)
 
     def export_subitem(self, ctx: Context):
-        DEFAULT_MINERALS_BLOCK_ARGS: dict[str, TypingSubItemBlock] = {
-            "ore": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.ore",
-                    {Lang.en_us: "%s Ore", Lang.fr_fr: "Minerai de %s"},
-                ),
-                "block_properties": BlockProperties(base_block="minecraft:lodestone")
-            },
-            "deepslate_ore": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.deepslate_ore",
-                    {Lang.en_us: "Deepslate %s Ore", Lang.fr_fr: "Minerai de deepslate de %s"},
-                ),
-                "block_properties": BlockProperties(base_block="minecraft:lodestone")
-            },
-            "raw_ore_block": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.raw_block",
-                    {Lang.en_us: "Raw %s Block", Lang.fr_fr: "Bloc brut de %s"},
-                ),
-                "block_properties": BlockProperties(base_block="minecraft:lodestone")
-            },
-            "block": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.block",
-                    {Lang.en_us: "%s Block", Lang.fr_fr: "Bloc de %s"},
-                ),
-                "block_properties": BlockProperties(base_block="minecraft:lodestone")
-            },
-        }
-
-        DEFAULT_MINERALS_ITEM_ARGS: dict[str, TypingSubItem] = {
-            "raw_ore": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.raw_ore",
-                    {Lang.en_us: "Raw %s Ore", Lang.fr_fr: "Minerai brut de %s"},
-                ),
-            },
-            "ingot": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.ingot",
-                    {Lang.en_us: "%s Ingot", Lang.fr_fr: "Lingot de %s"},
-                ),
-            },
-            "nugget": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.nugget",
-                    {Lang.en_us: "%s Nugget", Lang.fr_fr: "Pépite de %s"},
-                ),
-            },
-            "dust": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.dust",
-                    {Lang.en_us: "%s Dust", Lang.fr_fr: "Poudre de %s"},
-                ),
-            },
-        }
-
-        DEFAULT_TOOLS_ARGS: dict[ToolType, TypingToolArgs] = {
-            "pickaxe": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.pickaxe",
-                    {Lang.en_us: "%s Pickaxe", Lang.fr_fr: "Pioche en %s"},
-                ),
-                "type": "pickaxe",
-            },
-            "axe": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.axe",
-                    {Lang.en_us: "%s Axe", Lang.fr_fr: "Hache en %s"},
-                ),
-                "type": "axe",
-            },
-            "shovel": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.shovel",
-                    {Lang.en_us: "%s Shovel", Lang.fr_fr: "Pelle en %s"},
-                ),
-                "type": "shovel",
-            },
-            "hoe": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.hoe",
-                    {Lang.en_us: "%s Hoe", Lang.fr_fr: "Houe en %s"},
-                ),
-                "type": "hoe",
-            },
-            "sword": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.sword",
-                    {Lang.en_us: "%s Sword", Lang.fr_fr: "Épée en %s"},
-                ),
-                "type": "sword",
-            },
-        }
-
-
-        DEFAULT_ARMOR_ARGS: dict[str, TypingArmorArgs] = {
-            "helmet": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.helmet",
-                    {Lang.en_us: "%s Helmet", Lang.fr_fr: "Casque en %s"},
-                ),
-                "type": "helmet"
-            },
-            "chestplate": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.chestplate",
-                    {Lang.en_us: "%s Chestplate", Lang.fr_fr: "Plastron en %s"},
-                ),
-                "type": "chestplate"
-            },
-            "leggings": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.leggings",
-                    {Lang.en_us: "%s Leggings", Lang.fr_fr: "Jambières en %s"},
-                ),
-                "type": "leggings"
-            },
-            "boots": {
-                "translation": (
-                    f"{NAMESPACE}.mineral_name.boots",
-                    {Lang.en_us: "%s Boots", Lang.fr_fr: "Bottes en %s"},
-                ),
-                "type": "boots"
-            },
-        }
-
-
-        for item in self.items.keys():
-            if not item in self.items:
-                continue
-            if item in DEFAULT_MINERALS_BLOCK_ARGS.keys():
-                args = DEFAULT_MINERALS_BLOCK_ARGS[item]
-                args.update(self.items[item]) # type: ignore
-                subitem = SubItemBlock(**args)
-            elif item in DEFAULT_MINERALS_ITEM_ARGS.keys():
-                args = DEFAULT_MINERALS_ITEM_ARGS[item]
-                args.update(self.items[item]) # type: ignore
-                subitem = SubItem(**args)
-            elif item in DEFAULT_TOOLS_ARGS.keys():
-                args = DEFAULT_TOOLS_ARGS[item] # type: ignore
-                args.update(self.items[item]) # type: ignore
-                subitem = SubItemTool(**args) # type: ignore
-            elif item in DEFAULT_ARMOR_ARGS.keys():
-                args = DEFAULT_ARMOR_ARGS[item]
-                args.update(self.items[item]) # type: ignore
-                subitem = SubItemArmor(**args)
+        for item, item_args in self.overrides.items():
+            item_args["translation"] = get_default_translated_string(item)
+            item_args["type"] = item
+            if item in get_args(ToolType):
+                subitem = SubItemTool(**item_args)
+            elif item in get_args(ArmorType):
+                item_args["additional_attributes"] = self.armor_additional_attributes
+                subitem = SubItemArmor(**item_args)
+            elif item in get_args(BlockType):
+                subitem = SubItemBlock(**item_args)
+            elif item in get_args(ItemType):
+                subitem = SubItem(**item_args)
             else:
-                args = self.items[item]
-                subitem = SubItem(**args) # type: ignore
+                raise ValueError("Invalid item type")
             subitem.export(ctx)
             Item(
                 id=f"{self.id}_{item}",
@@ -393,7 +297,6 @@ class Mineral:
                 is_cookable=subitem.is_cookable,
                 is_armor=isinstance(subitem, SubItemArmor),
                 ).export(ctx)
-
         self.generate_crafting_recipes(ctx)
         return self
 

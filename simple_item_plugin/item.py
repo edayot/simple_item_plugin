@@ -403,12 +403,16 @@ kill @s
                     },
                 }
             )
+    def create_armor(self, ctx: Context):
+        if not self.is_armor:
+            return
 
     def export(self, ctx: Context):
         self.create_loot_table(ctx)
         self.create_translation(ctx)
         self.create_custom_block(ctx)
         self.create_assets(ctx)
+        self.create_armor(ctx)
 
         # add the item to the registry
         assert self.id not in ctx.meta.setdefault("registry", {}).setdefault("items", {})
@@ -417,4 +421,4 @@ kill @s
 
     @classmethod
     def get_from_id(cls, ctx: Context, id: str) -> Optional["Item"]:
-        return ctx.meta["registry"]["items"].get(id, None)
+        return ctx.meta.get("registry", {}).get("items", {}).get(id, None)
