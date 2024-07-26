@@ -16,9 +16,9 @@ def beet_default(ctx: Context):
         with open(stable_cache, "r") as f:
             ctx.meta["simple_item_plugin"]["stable_cache"] = json.load(f)
     yield
-    
-    with open(stable_cache, "w") as f:
-        json.dump(ctx.meta["simple_item_plugin"]["stable_cache"], f, indent=4)
     ctx.require(guide)
     ctx.require(versioning)
     ctx.require(mecha)
+
+    with open(stable_cache, "w") as f:
+        json.dump(ctx.meta["simple_item_plugin"]["stable_cache"], f, indent=4)

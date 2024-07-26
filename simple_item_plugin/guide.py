@@ -3,7 +3,7 @@ from simple_item_plugin.crafting import VanillaItem, ShapedRecipeRegistry
 from beet import Context, Texture, Font, ItemModifier, LootTable, Generator
 from model_resolver import beet_default as model_resolver
 from PIL import Image, ImageDraw, ImageFont
-from simple_item_plugin.utils import NAMESPACE
+from simple_item_plugin.utils import NAMESPACE, Lang
 import json
 import pathlib
 from dataclasses import dataclass
@@ -49,7 +49,6 @@ def guide(ctx: Context):
         generate_guide(ctx, draft)
     
 def generate_guide(ctx: Context, draft: Generator):
-    print("Generating guide")
     air = VanillaItem("minecraft:air")
     # Render the registry
     all_items= get_item_list()
@@ -90,7 +89,7 @@ def generate_guide(ctx: Context, draft: Generator):
             item_result,
             craft.result[1]
         ))
-    create_loot_table(draft, pages)
+    create_guide(draft, pages)
 
 
 
@@ -248,55 +247,21 @@ def image_count(count: int) -> Image.Image:
 
 
 
-def create_loot_table(draft: Generator, pages: Iterable[str]):
-    item_modifier_path = f"{NAMESPACE}:impl/guide_modifier"
-    loot_table = {
-        "pools": [
-            {
-                "rolls": 1,
-                "entries": [
-                    {
-                        "type": "minecraft:item",
-                        "name": "minecraft:written_book",
-                        "functions": [
-                            {
-                                "function": "minecraft:reference",
-                                "name": item_modifier_path
-                            }
-                        ]
-                    }
-                ]
-            }
-        ]
-    }
-    item_modifier = {
-            "function": "minecraft:set_components",
-            "components": {
-                "minecraft:written_book_content": {
-                    "title": "Guide",
-                    "author": "AirDox_",
-                    "pages": pages,
-                    "resolved": True
-                },
-                "minecraft:custom_model_data": 1431000,
-                "minecraft:custom_data": {
-                    "ctc": {
-                        "id": "guide",
-                        "from": f"airdox_:{NAMESPACE}",
-                    },
-                    "smithed": {
-                        "id": f"airdox_:{NAMESPACE}/guide",
-                    }
-                },
-                "minecraft:item_name": json.dumps({"translate":f"{NAMESPACE}.guide","color":"white"}),
-                "minecraft:enchantment_glint_override": False,
-                "minecraft:lore": [
-                    f"{{\"translate\":\"{NAMESPACE}.name\",\"color\":\"blue\",\"italic\":true}}"
-                ]
-            }
-        }
-
-    draft.data.item_modifiers[item_modifier_path] = ItemModifier(item_modifier)
-
-    loot_table_path = f"{NAMESPACE}:impl/items/guide"
-    draft.data.loot_tables[loot_table_path] = LootTable(loot_table)
+def create_guide(draft: Generator, pages: Iterable[str]):
+    print("Creating guide")
+    Item(
+        id="guide",
+        item_name=(
+            f"{NAMESPACE}.item.guide",
+            {Lang.en_us: "Guide", Lang.fr_fr: "Guide"},
+        ),
+        components_extra={
+            "minecraft:written_book_content": {
+                "title": "Guide",
+                "author": "AirDox_",
+                "pages": pages,
+                "resolved": True
+            },
+            "minecraft:enchantment_glint_override": False,
+        },
+    ).export(draft)

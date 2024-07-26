@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from simple_item_plugin.types import TextComponent, TextComponent_base, NAMESPACE, TranslatedString
-from beet import Context, FunctionTag, Function, LootTable, Model, Texture, ResourcePack
+from beet import Context, FunctionTag, Function, LootTable, Model, Texture, ResourcePack, Generator
 from PIL import Image
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING, Union
 from typing_extensions import TypedDict, NotRequired, Literal, Optional
 from simple_item_plugin.utils import export_translated_string
 from beet.contrib.vanilla import Vanilla
@@ -52,10 +52,11 @@ class Item(BaseModel):
 
     base_item: str = "minecraft:jigsaw"
 
-    def custom_model_data(self, ctx: Context):
-        cmd_cache = ctx.meta["simple_item_plugin"]["stable_cache"].setdefault("cmd", {})
+    def custom_model_data(self, ctx: Union[Context, Generator]):
+        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
+        cmd_cache = real_ctx.meta["simple_item_plugin"]["stable_cache"].setdefault("cmd", {})
         if self.id not in cmd_cache:
-            cmd_cache[self.id] = max(cmd_cache.values(), default=ctx.meta["simple_item_plugin"].get("custom_model_data", 0)) + 1
+            cmd_cache[self.id] = max(cmd_cache.values(), default=real_ctx.meta["simple_item_plugin"].get("custom_model_data", 0)) + 1
         return cmd_cache[self.id]
         
     block_properties: BlockProperties | None = None
@@ -139,7 +140,7 @@ class Item(BaseModel):
             }
         )
 
-    def create_translation(self, ctx: Context):
+    def create_translation(self, ctx: Union[Context, Generator]):
         # add the translations to the languages files for item_name
         if isinstance(self.item_name, tuple):
             export_translated_string(ctx, self.item_name)
@@ -165,14 +166,14 @@ class Item(BaseModel):
             res["smithed"]["block"] = {"id": self.namespace_id}
         return res
 
-    def create_custom_block(self, ctx: Context):
+    def create_custom_block(self, ctx: Union[Context, Generator]):
         if not self.block_properties:
             return
         self.create_custom_block_placement(ctx)
         self.create_custom_block_destroy(ctx)
         self.handle_world_generation(ctx)
 
-    def handle_world_generation(self, ctx: Context):
+    def handle_world_generation(self, ctx: Union[Context, Generator]):
         if not self.block_properties or not self.block_properties.world_generation:
             return
         for i, world_gen in enumerate(self.block_properties.world_generation):
@@ -232,7 +233,7 @@ execute
         
 
     
-    def create_custom_block_placement(self, ctx: Context):
+    def create_custom_block_placement(self, ctx: Union[Context, Generator]):
         if not self.block_properties:
             return
         smithed_function_tag_id = f"custom_block_ext:event/on_place"
@@ -281,7 +282,7 @@ prepend function ./on_place/{self.id}/place_entity:
 """
         )
     
-    def create_custom_block_destroy(self, ctx: Context):
+    def create_custom_block_destroy(self, ctx: Union[Context, Generator]):
         if not self.block_properties:
             return
         destroy_function_id = f"{NAMESPACE}:impl/blocks/destroy/{self.id}"
@@ -312,7 +313,7 @@ kill @s
             )
         return res
 
-    def create_loot_table(self, ctx: Context):
+    def create_loot_table(self, ctx: Union[Context, Generator]):
         ctx.data.loot_tables[self.loot_table_path] = LootTable(
             {
                 "pools": [
@@ -359,11 +360,12 @@ kill @s
             "color": "white",
         }
 
-    def create_assets(self, ctx: Context):
+    def create_assets(self, ctx: Union[Context, Generator]):
         key = f"minecraft:item/{self.base_item.split(':')[1]}"
         rp = ResourcePack()
         
-        vanilla = ctx.inject(Vanilla).releases[ctx.meta["minecraft_version"]]
+        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
+        vanilla = real_ctx.inject(Vanilla).releases[real_ctx.meta["minecraft_version"]]
         # get the default model for this item
         model = Model(vanilla.assets.models[key].data.copy())
         model.data["overrides"] = []
@@ -416,20 +418,17 @@ kill @s
                     },
                 }
             )
-    def create_armor(self, ctx: Context):
-        if not self.is_armor:
-            return
 
-    def export(self, ctx: Context):
+    def export(self, ctx: Union[Context, Generator]):
         self.create_loot_table(ctx)
         self.create_translation(ctx)
         self.create_custom_block(ctx)
         self.create_assets(ctx)
-        self.create_armor(ctx)
 
         # add the item to the registry
-        assert self.id not in ctx.meta.setdefault("registry", {}).setdefault("items", {})
-        ctx.meta["registry"]["items"][self.id] = self
+        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
+        assert self.id not in real_ctx.meta.setdefault("registry", {}).setdefault("items", {})
+        real_ctx.meta["registry"]["items"][self.id] = self
         return self
 
     @classmethod

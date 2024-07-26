@@ -1,6 +1,7 @@
 import random
-from beet import Context, Language
+from beet import Context, Language, Generator
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
+from typing import Union
 
 
 def generate_uuid() -> list[int]:
@@ -12,7 +13,7 @@ def generate_uuid() -> list[int]:
     ]
 
 
-def export_translated_string(ctx: Context, translation: TranslatedString):
+def export_translated_string(ctx: Union[Context, Generator], translation: TranslatedString):
     # create default languages files if they don't exist
     for lang in Lang:
         if lang.namespaced not in ctx.assets.languages:
