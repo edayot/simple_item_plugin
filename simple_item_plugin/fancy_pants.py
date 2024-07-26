@@ -5,11 +5,11 @@ from PIL import Image
 
 
 def beet_default(ctx: Context):
-    ctx.assets.merge_policy.extend_namespace(Texture, FancyPants())
+    ctx.assets.merge_policy.extend_namespace(Texture, FancyPantsConflictsHandler())
 
 
 @dataclass
-class FancyPants:
+class FancyPantsConflictsHandler:
     def __call__(
         self,
         pack: ResourcePack,
