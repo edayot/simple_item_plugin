@@ -1,32 +1,40 @@
-from beet import Context
+from beet import Context, Texture
 from dataclasses import dataclass, field
 
-from typing import Any, Literal, get_args
+from typing import Any, Literal, get_args, Optional
 from typing_extensions import TypedDict, NotRequired
 from simple_item_plugin.utils import export_translated_string
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
 from simple_item_plugin.item import Item, BlockProperties
 from simple_item_plugin.crafting import ShapedRecipe, ShapelessRecipe, NBTSmelting, VanillaItem, SimpledrawerMaterial
 
+from PIL import Image
 from pydantic import BaseModel
 
 from enum import Enum
 import json
+import pathlib
+import random
 
 Mineral_list: list["Mineral"] = []
 ToolType = Literal["pickaxe", "axe", "shovel", "hoe", "sword"]
 ArmorType = Literal["helmet", "chestplate", "leggings", "boots"]
 BlockType = Literal["ore", "deepslate_ore", "raw_ore_block", "block"]
 ItemType = Literal["raw_ore", "ingot", "nugget", "dust"]
+ToolTypeList = set(get_args(ToolType))
+ArmorTypeList = set(get_args(ArmorType))
+BlockTypeList = set(get_args(BlockType))
+ItemTypeList = set(get_args(ItemType))
+
 
 AllItemTypes = ToolType | ArmorType | BlockType | ItemType
+AllItemTypesList = set([*ToolTypeList, *ArmorTypeList, *BlockTypeList, *ItemTypeList])
 
 TierType = Literal["wooden", "stone", "iron", "golden", "diamond", "netherite"]
 
 
 class AttributeModifier(TypedDict):
     amount: float
-    name: NotRequired[str]
     operation: NotRequired[str]
     slot: str
 
@@ -62,6 +70,7 @@ class SubItem(BaseModel):
     translation: TranslatedString
     block_properties: BlockProperties | None = None
     is_cookable: bool = False
+    mineral : "Mineral"
 
     additional_attributes: dict[str, AttributeModifier] = field(default_factory=lambda: {})
 
@@ -72,14 +81,13 @@ class SubItem(BaseModel):
             "color": "white",
         }
 
-    def get_components(self) -> dict[str, Any]:
+    def get_components(self, ctx: Context) -> dict[str, Any]:
         return {
             "minecraft:attribute_modifiers": {
                 "modifiers": [
                     {
                         "type": key,
                         "amount": value["amount"],
-                        "name": value["name"] if "name" in value else "No name",
                         "operation": value["operation"] if "operation" in value else "add_value",
                         "slot": value["slot"],
                         "id": f"{NAMESPACE}:{key.split('.')[-1]}_{self.translation[0]}",
@@ -103,14 +111,14 @@ class SubItemBlock(SubItem):
     )
 
     def get_base_item(self):
-        return "minecraft:furnace"
+        return "minecraft:lodestone"
 
 
 class SubItemDamagable(SubItem):
     max_damage: int
 
-    def get_components(self):
-        res = super().get_components()
+    def get_components(self, ctx: Context):
+        res = super().get_components(ctx)
         res.update({
             "minecraft:max_stack_size": 1,
             "minecraft:max_damage": self.max_damage,
@@ -123,14 +131,13 @@ class SubItemArmor(SubItemDamagable):
     armor: float
     armor_toughness: float
 
-    def get_components(self):
-        res = super().get_components()
+    def get_components(self, ctx: Context):
+        res = super().get_components(ctx)
         res.setdefault("minecraft:attribute_modifiers", {}).setdefault("modifiers", [])
         res["minecraft:attribute_modifiers"]["modifiers"].extend([
             {
                 "type": "minecraft:generic.armor",
                 "amount": self.armor,
-                "name": "Armor modifier",
                 "operation": "add_value",
                 "slot": "armor",
                 "id": f"{NAMESPACE}:armor_{self.translation[0]}",
@@ -138,12 +145,17 @@ class SubItemArmor(SubItemDamagable):
             {
                 "type": "minecraft:generic.armor_toughness",
                 "amount": self.armor_toughness,
-                "name": "Armor toughness modifier",
                 "operation": "add_value",
                 "slot": "armor",
                 "id": f"{NAMESPACE}:armor_toughness_{self.translation[0]}",
             },
         ])
+        color = self.mineral.get_fancyPants_color(ctx)
+        rgb = 256*256*color[0] + 256*color[1] + color[2]
+        res["minecraft:dyed_color"] = {
+            "rgb": rgb,
+            "show_in_tooltip": False,
+        }
         return res
     
     def get_base_item(self):
@@ -165,14 +177,13 @@ class SubItemWeapon(SubItemDamagable):
     attack_damage: float
     attack_speed: float
 
-    def get_components(self):
-        res = super().get_components()
+    def get_components(self, ctx: Context):
+        res = super().get_components(ctx)
         res.setdefault("minecraft:attribute_modifiers", {}).setdefault("modifiers", [])
         res["minecraft:attribute_modifiers"]["modifiers"].extend([
             {
                 "type": "minecraft:generic.attack_damage",
                 "amount": self.attack_damage,
-                "name": "Tool modifier",
                 "operation": "add_value",
                 "slot": "hand",
                 "id": f"{NAMESPACE}:attack_damage_{self.translation[0]}",
@@ -180,7 +191,6 @@ class SubItemWeapon(SubItemDamagable):
             {
                 "type": "minecraft:generic.attack_speed",
                 "amount": self.attack_speed-4,
-                "name": "Tool modifier",
                 "operation": "add_value",
                 "slot": "hand",
                 "id": f"{NAMESPACE}:attack_speed_{self.translation[0]}",
@@ -194,8 +204,8 @@ class SubItemTool(SubItemWeapon):
     tier: TierType
     speed: float = 2.0
 
-    def get_components(self):
-        res = super().get_components()
+    def get_components(self, ctx: Context):
+        res = super().get_components(ctx)
         res.update(
             {
                 "minecraft:tool": {
@@ -270,20 +280,78 @@ class Mineral:
 
     def export(self, ctx: Context):
         export_translated_string(ctx, self.name)
+        self.export_armor(ctx)
         self.export_subitem(ctx)
+    
+    def get_fancyPants_color(self, ctx: Context):
+        armor_color_cache = ctx.meta["simple_item_plugin"]["stable_cache"].setdefault("armor_color", {})
+        if not self.id in armor_color_cache:
+            armor_color_cache[self.id] = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        return armor_color_cache[self.id]
+
+    @staticmethod
+    def merge_layer(original: Image.Image, new: Image.Image) -> Image.Image:
+        new_size = (original.width+new.width, max(original.height, new.height))
+        new_image = Image.new("RGBA", new_size)
+        new_image.paste(original, (0, 0))
+        new_image.paste(new, (original.width, 0))
+        return new_image
+
+    def export_armor(self, ctx: Context):
+        if not any(item in ArmorTypeList for item in self.overrides):
+            return
+        color = self.get_fancyPants_color(ctx)
+        layer_1_path = f"{NAMESPACE}:models/armor/{self.id}_layer_1"
+        layer_2_path = f"{NAMESPACE}:models/armor/{self.id}_layer_2"
+        clear_path = f"{NAMESPACE}:models/armor/clear"
+
+        assert layer_1_path in ctx.assets.textures
+        assert layer_2_path in ctx.assets.textures
+        if clear_path not in ctx.assets.textures:
+            ctx.assets.textures[clear_path] = Texture(Image.new("RGBA", (64, 32), (0, 0, 0, 0)))
+
+        layer_1 : Image.Image = ctx.assets.textures[layer_1_path].image
+        layer_2 : Image.Image = ctx.assets.textures[layer_2_path].image
+        layer_1 = layer_1.copy().convert("RGBA")
+        layer_2 = layer_2.copy().convert("RGBA")
+
+        layer_1.putpixel((0, 0), (*color, 255))
+        layer_2.putpixel((0, 0), (*color, 255))
+
+        minecraft_layer_1_path = "minecraft:models/armor/leather_layer_1"
+        minecraft_layer_2_path = "minecraft:models/armor/leather_layer_2"
+
+        if minecraft_layer_1_path not in ctx.assets.textures or minecraft_layer_2_path not in ctx.assets.textures:
+            fancyPants_layer_1_path = pathlib.Path(__file__).parent / "assets" / "fancyPants" / "leather_layer_1.png"
+            fancyPants_layer_2_path = pathlib.Path(__file__).parent / "assets" / "fancyPants" / "leather_layer_2.png"
+            fancyPants_layer_1 = Image.open(fancyPants_layer_1_path).convert("RGBA")
+            fancyPants_layer_2 = Image.open(fancyPants_layer_2_path).convert("RGBA")
+        else:
+            fancyPants_layer_1 : Image.Image = ctx.assets.textures[minecraft_layer_1_path].image
+            fancyPants_layer_2 : Image.Image = ctx.assets.textures[minecraft_layer_2_path].image
+
+        new_layer_1 = self.merge_layer(fancyPants_layer_1, layer_1)
+        new_layer_2 = self.merge_layer(fancyPants_layer_2, layer_2)
+
+        ctx.assets.textures[minecraft_layer_1_path] = Texture(new_layer_1)
+        ctx.assets.textures[minecraft_layer_2_path] = Texture(new_layer_2)
+        
+
+
 
     def export_subitem(self, ctx: Context):
         for item, item_args in self.overrides.items():
             item_args["translation"] = get_default_translated_string(item)
             item_args["type"] = item
-            if item in get_args(ToolType):
+            item_args["mineral"] = self
+            if item in ToolTypeList:
                 subitem = SubItemTool(**item_args)
-            elif item in get_args(ArmorType):
+            elif item in ArmorTypeList:
                 item_args["additional_attributes"] = self.armor_additional_attributes
                 subitem = SubItemArmor(**item_args)
-            elif item in get_args(BlockType):
+            elif item in BlockTypeList:
                 subitem = SubItemBlock(**item_args)
-            elif item in get_args(ItemType):
+            elif item in ItemTypeList:
                 subitem = SubItem(**item_args)
             else:
                 raise ValueError("Invalid item type")
@@ -291,7 +359,7 @@ class Mineral:
             Item(
                 id=f"{self.id}_{item}",
                 item_name=subitem.get_item_name(self.name),
-                components_extra=subitem.get_components(),
+                components_extra=subitem.get_components(ctx),
                 base_item=subitem.get_base_item(),
                 block_properties=subitem.block_properties,
                 is_cookable=subitem.is_cookable,

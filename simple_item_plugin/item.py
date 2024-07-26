@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
 from simple_item_plugin.types import TextComponent, TextComponent_base, NAMESPACE, TranslatedString
-from beet import Context, FunctionTag, Function, LootTable, Model
-from typing import Any
+from beet import Context, FunctionTag, Function, LootTable, Model, Texture
+from PIL import Image
+from typing import Any, Optional, TYPE_CHECKING
 from typing_extensions import TypedDict, NotRequired, Literal, Optional
 from simple_item_plugin.utils import export_translated_string
 from beet.contrib.vanilla import Vanilla
@@ -10,6 +11,11 @@ from nbtlib.tag import Compound, String, Byte
 from nbtlib import serialize_tag
 import json
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from simple_item_plugin.mineral import Mineral
+else:
+    Mineral = Any
 
 
 class WorldGenerationParams(BaseModel):
@@ -47,14 +53,16 @@ class Item(BaseModel):
     base_item: str = "minecraft:jigsaw"
 
     def custom_model_data(self, ctx: Context):
-        stable_cache = ctx.meta["simple_item_plugin"]["stable_cache"]
-        if self.id not in stable_cache:
-            stable_cache[self.id] = max(stable_cache.values(), default=ctx.meta["simple_item_plugin"].get("custom_model_data", 0)) + 1
-        return stable_cache[self.id]
+        cmd_cache = ctx.meta["simple_item_plugin"]["stable_cache"].setdefault("cmd", {})
+        if self.id not in cmd_cache:
+            cmd_cache[self.id] = max(cmd_cache.values(), default=ctx.meta["simple_item_plugin"].get("custom_model_data", 0)) + 1
+        return cmd_cache[self.id]
         
     block_properties: BlockProperties | None = None
     is_cookable: bool = False
     is_armor: bool = False
+
+    mineral: Optional[Mineral] = None
 
     @property
     def loot_table_path(self):
@@ -377,10 +385,10 @@ kill @s
             else:
                 ctx.assets.models[self.model_path] = Model(
                     {
-                        "parent": "item/armor",
+                        "parent": "item/generated",
                         "textures": {
-                            "layer1": f"{NAMESPACE}:item/clear",
-                            "layer2": self.model_path,
+                            "layer0": f"{NAMESPACE}:item/clear",
+                            "layer1": self.model_path,
                         },
                     }
                 )

@@ -263,7 +263,7 @@ def image_count(count: int) -> Image.Image:
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     font_size = 24
-    ttf_path = pathlib.Path(__file__).parent / "minecraft_font.ttf"
+    ttf_path = pathlib.Path(__file__).parent / "assets" / "minecraft_font.ttf"
     font = ImageFont.truetype(ttf_path, size = font_size)
 
     # Calculate text size and positions of the two texts
