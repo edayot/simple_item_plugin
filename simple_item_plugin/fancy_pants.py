@@ -25,18 +25,38 @@ class FancyPants:
 
         current: Image.Image = current_texture.image
         conflict: Image.Image = conflict_texture.image
+
+        current_is_fancyPants = current.getpixel((0, 1)) == (255, 255, 255, 255)
+        conflict_is_fancyPants = conflict.getpixel((0, 1)) == (255, 255, 255, 255)
+
+        if not current_is_fancyPants and not conflict_is_fancyPants:
+            # Normal behavior of merge_policy
+            current_texture.image = conflict
+            return True
         current = current.copy().convert("RGBA")
+        current_first = current.crop((0, 0, 64, current.height))
         current = current.crop((64, 0, current.width, current.height))
+
         conflict = conflict.copy().convert("RGBA")
         conflict_first = conflict.crop((0, 0, 64, conflict.height))
         conflict = conflict.crop((64, 0, conflict.width, conflict.height))
+
+        if current_is_fancyPants and not conflict_is_fancyPants:
+            # The conflict image will be put at the first layer
+            first = conflict_first
+        elif not current_is_fancyPants and conflict_is_fancyPants:
+            # The current image will be put at the first layer
+            first = current_first
+        elif current_is_fancyPants and conflict_is_fancyPants:
+            # The conflict image will be put at the first layer
+            first = conflict_first
 
         new_size = (
             current.width + conflict.width + 64,
             max(current.height, conflict.height),
         )
         new_image = Image.new("RGBA", new_size)
-        new_image.paste(conflict_first, (0, 0))
+        new_image.paste(first, (0, 0))
 
         layer_dict: dict[int, Image.Image] = {}
         self.fill_layer_dict(conflict, layer_dict)
@@ -44,6 +64,9 @@ class FancyPants:
 
         for i, layer in enumerate(layer_dict.values()):
             new_image.paste(layer, (64 + i * 64, 0))
+
+        # Add the fancy pants tag
+        new_image.putpixel((0, 1), (255, 255, 255, 255))
 
         current_texture.image = new_image
 
