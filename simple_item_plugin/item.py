@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from simple_item_plugin.types import TextComponent, TextComponent_base, NAMESPACE, TranslatedString
-from beet import Context, FunctionTag, Function, LootTable, Model, Texture
+from beet import Context, FunctionTag, Function, LootTable, Model, Texture, ResourcePack
 from PIL import Image
 from typing import Any, Optional, TYPE_CHECKING
 from typing_extensions import TypedDict, NotRequired, Literal, Optional
@@ -361,19 +361,24 @@ kill @s
 
     def create_assets(self, ctx: Context):
         key = f"minecraft:item/{self.base_item.split(':')[1]}"
-        if not key in ctx.assets.models:
-            vanilla = ctx.inject(Vanilla).releases[ctx.meta["minecraft_version"]]
-            # get the default model for this item
-            ctx.assets.models[key] = Model(vanilla.assets.models[key].data.copy())
-            ctx.assets.models[key].data["overrides"] = []
+        rp = ResourcePack()
+        
+        vanilla = ctx.inject(Vanilla).releases[ctx.meta["minecraft_version"]]
+        # get the default model for this item
+        model = Model(vanilla.assets.models[key].data.copy())
+        model.data["overrides"] = []
+
 
         # add the custom model data to the model
-        ctx.assets.models[key].data["overrides"].append(
+        model.data["overrides"].append(
             {
                 "predicate": {"custom_model_data": self.custom_model_data(ctx)},
                 "model": self.model_path,
             }
         )
+        rp.models[key] = model
+        ctx.assets.merge(rp)
+        
         # create the custom model
         if self.model_path in ctx.assets.models:
             return
