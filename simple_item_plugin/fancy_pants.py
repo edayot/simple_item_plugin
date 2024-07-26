@@ -1,7 +1,6 @@
 from typing import Generator
 from beet import Context, Texture, ResourcePack
 from dataclasses import dataclass
-import pathlib
 from PIL import Image
 
 
@@ -39,17 +38,17 @@ class FancyPants:
         new_image = Image.new("RGBA", new_size)
         new_image.paste(conflict_first, (0, 0))
 
-        layer_dict : dict[int, Image.Image] = {}
+        layer_dict: dict[int, Image.Image] = {}
         self.fill_layer_dict(conflict, layer_dict)
         self.fill_layer_dict(current, layer_dict)
-        
+
         for i, layer in enumerate(layer_dict.values()):
-            new_image.paste(layer, (64 + i*64, 0))
+            new_image.paste(layer, (64 + i * 64, 0))
 
         current_texture.image = new_image
 
         return True
-    
+
     @staticmethod
     def iterate_layer(image: Image.Image) -> Generator[Image.Image, None, None]:
         for i in range(0, image.width, 64):
@@ -60,5 +59,5 @@ class FancyPants:
             color = layer.getpixel((0, 0))
             if not isinstance(color, tuple):
                 raise ValueError("Expected color to be a tuple but got " + str(color))
-            color_int = 256*256*color[0] + 256*color[1] + color[2]
+            color_int = 256 * 256 * color[0] + 256 * color[1] + color[2]
             layer_dict[color_int] = layer
