@@ -443,6 +443,8 @@ kill @s
         new_overrides = []
         for override in list(model.data["overrides"]):
             o = deepcopy(override)
+            if "custom_model_data" in o["predicate"]:
+                continue
             o["predicate"]["custom_model_data"] = self.custom_model_data(ctx)
             namespace_model_path = self.model_path + "/" + o["model"].split("/")[-1]
             minecraft_model_path = o["model"]
