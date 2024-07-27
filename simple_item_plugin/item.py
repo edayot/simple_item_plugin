@@ -396,13 +396,12 @@ kill @s
 
     def create_assets(self, ctx: Union[Context, Generator]):
         key = f"minecraft:item/{self.base_item.split(':')[1]}"
-        current_model = ctx.assets.models.get(key, None)
         rp = ResourcePack()
         
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
         vanilla = real_ctx.inject(Vanilla).releases[real_ctx.meta["minecraft_version"]]
         # get the default model for this item
-        model = Model(vanilla.assets.models[key].data.copy())
+        model = Model(deepcopy(vanilla.assets.models[key].data))
         if "overrides" in model.data:
             self.create_overrides(ctx, model, rp, key)
             ctx.assets.merge(rp)
@@ -528,7 +527,7 @@ kill @s
             minecraft_model_path = f"minecraft:{minecraft_model_path}" if ":" not in minecraft_model_path else minecraft_model_path
 
             # create the model
-            minecraft_model = Model(release.assets.models[minecraft_model_path].data.copy())
+            minecraft_model = Model(deepcopy(release.assets.models[minecraft_model_path].data))
             for texture_key, texture_path in list(minecraft_model.data["textures"].items()):
                 merge_policy = MergeOverridesPolicy.generate_new
                 if self.merge_overrides_policy and texture_key in self.merge_overrides_policy:
