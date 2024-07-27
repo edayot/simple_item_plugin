@@ -55,6 +55,42 @@ def guide(ctx: Context, opts: SimpleItemPluginOptions):
     with ctx.generate.draft() as draft:
         draft.cache("guide", "guide")
         generate_guide(ctx, draft)
+
+def generate_first_page(draft: Generator, items: Iterable[GuideItem]):
+    big_font_path = pathlib.Path(__file__).parent / "assets" / "guide" / "font" / "big.json"
+    big_font_namespace = f"{NAMESPACE}:big_font"
+
+    medium_font_path = pathlib.Path(__file__).parent / "assets" / "guide" / "font" / "medium.json"
+    medium_font_namespace = f"{NAMESPACE}:medium_font"
+
+    draft.assets.fonts[big_font_namespace] = Font(source_path=big_font_path)
+    draft.assets.fonts[medium_font_namespace] = Font(source_path=medium_font_path)
+
+    first_page : list[str | dict] = [""]
+    first_page.append({
+        "translate": f"{NAMESPACE}.name",
+        "font": big_font_namespace,
+    })
+    first_page.append("\n\n")
+    first_page.append({
+        "translate": f"{NAMESPACE}.guide.first_page",
+    })
+    first_page.append("\n")
+
+    for item in items:
+        if isinstance(item.item, VanillaItem):
+            continue
+        char_item = f"\\u{item.char_index:04x}".encode().decode("unicode_escape")
+        first_page.append(get_item_json(item, f"{NAMESPACE}:pages", f"\uef03{char_item}\uef03"))
+    first_page.append("\n")
+    for item in items:
+        if isinstance(item.item, VanillaItem):
+            continue
+        char_space = "\uef01"
+        first_page.append(get_item_json(item, f"{NAMESPACE}:pages", char_space))
+
+    return json.dumps(first_page)
+
     
 def generate_guide(ctx: Context, draft: Generator):
     air = VanillaItem("minecraft:air")
@@ -75,7 +111,7 @@ def generate_guide(ctx: Context, draft: Generator):
         draft.assets.textures[path] = Texture(img.copy())
     create_font(draft, all_items.values())
     pages = []
-    page_index = 0
+    page_index = len(pages) + 2
     for id, item in all_items.items():
         if not (craft := search_item(ctx, item)):
             continue
@@ -97,6 +133,7 @@ def generate_guide(ctx: Context, draft: Generator):
             item_result,
             craft.result[1]
         ))
+    pages.insert(0,generate_first_page(draft, all_items.values()))
     create_guide(draft, pages)
 
 
@@ -235,19 +272,23 @@ def generate_craft(craft: list[list[GuideItem]], result: GuideItem, count: int):
         for e in range(2):
             page.append({"text":"\uef00\uef00","font":font_path,"color":"white"})
             for j in range(3):
+                # normal item lines
                 item = craft[i][j]
                 char_item = f"\\u{item.char_index + i:04x}".encode().decode("unicode_escape")
                 page.append(get_item_json(item, font_path, f'\uef03{char_item}\uef03' if e == 0 else "\uef01"))
             if (i == 0 and e == 1) or (i == 2 and e == 0):
+                # result generation : void
                 page.append({"text":"\uef00\uef00\uef00\uef00","font":font_path,"color":"white"})
                 char_space = "\uef02\uef02"
                 page.append(get_item_json(result, font_path, char_space))
             if i == 1 and e == 0:
+                # result generation : render
                 page.append({"text":"\uef00\uef00\uef00\uef00","font":font_path,"color":"white"})
                 char_result = f"\\u{result.char_index:04x}".encode().decode("unicode_escape")
                 char_space = "\uef00\uef00\uef03"
                 page.append(get_item_json(result, font_path, f'{char_space}{char_result}{char_space}\uef00'))
             if i == 1 and e == 1:
+                # result generation : count
                 page.append({"text":"\uef00\uef00\uef00\uef00","font":font_path,"color":"white"})
                 char_space = "\uef02\uef02"
                 if count > 1:
