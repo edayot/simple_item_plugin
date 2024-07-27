@@ -64,7 +64,7 @@ class MergeOverridesPolicy(Enum):
 class Item(BaseModel):
     id: str
     # the translation key, the
-    item_name: TextComponent | TranslatedString | None = None
+    item_name: TextComponent_base | TranslatedString
     lore: list[TranslatedString] = field(default_factory=list)
 
     components_extra: dict[str, Any] = field(default_factory=dict)
@@ -85,6 +85,8 @@ class Item(BaseModel):
     merge_overrides_policy: Optional[dict[str, MergeOverridesPolicy]] = None
 
     mineral: Optional[Mineral] = None
+
+    guide_description: Optional[TranslatedString] = None
 
     @property
     def clear_texture_path(self):
@@ -108,6 +110,7 @@ class Item(BaseModel):
             "id": self.base_item,
             "components": {
                 "minecraft:item_name": json.dumps(self.get_item_name()),
+                "minecraft:lore": [json.dumps(lore) for lore in self.create_lore()],
             }
         }
     

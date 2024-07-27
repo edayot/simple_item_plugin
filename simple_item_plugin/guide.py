@@ -3,7 +3,7 @@ from simple_item_plugin.crafting import VanillaItem
 from beet import Context, Texture, Font, ItemModifier, LootTable, Generator, configurable
 from model_resolver import beet_default as model_resolver
 from PIL import Image, ImageDraw, ImageFont
-from simple_item_plugin.utils import NAMESPACE, Lang, SimpleItemPluginOptions
+from simple_item_plugin.utils import NAMESPACE, Lang, SimpleItemPluginOptions, export_translated_string
 import json
 import pathlib
 from dataclasses import dataclass
@@ -53,7 +53,7 @@ def guide(ctx: Context, opts: SimpleItemPluginOptions):
     if not opts.generate_guide:
         return
     with ctx.generate.draft() as draft:
-        draft.cache("guide", "guide")
+        # draft.cache("guide", "guide")
         generate_guide(ctx, draft)
 
 def generate_first_page(draft: Generator, items: Iterable[GuideItem]):
@@ -131,7 +131,8 @@ def generate_guide(ctx: Context, draft: Generator):
         pages.append(generate_craft(
             items_craft,
             item_result,
-            craft.result[1]
+            craft.result[1],
+            draft
         ))
     pages.insert(0,generate_first_page(draft, all_items.values()))
     create_guide(draft, pages)
@@ -258,10 +259,19 @@ def get_item_json(item: GuideItem, font_path: str, char : str = "\uef01"):
         "clickEvent":{"action":"change_page","value":f"{item.page_index}"}
     }
 
-def generate_craft(craft: list[list[GuideItem]], result: GuideItem, count: int):
+def generate_craft(craft: list[list[GuideItem]], result: GuideItem, count: int, draft: Generator) -> str:
     # Create a font for the page
     font_path = f'{NAMESPACE}:pages'
     page : list[str | dict] = [""]
+    item_name = result.item.get_item_name() if isinstance(result.item, Item) else result.item.id
+    description = result.item.guide_description if isinstance(result.item, Item) else None
+    description = description if description else ("", {})
+    export_translated_string(draft, description)
+    if isinstance(item_name, str):
+        item_name = {"text":item_name}
+    item_name["font"] = f"{NAMESPACE}:medium_font"
+    item_name["color"] = "black"
+    page.append(item_name)
     page.append({
         "text":f"\n\uef13 \uef14\n",
         "font":font_path,
@@ -296,6 +306,12 @@ def generate_craft(craft: list[list[GuideItem]], result: GuideItem, count: int):
                     char_space = f"\uef00\uef00\uef00{char_count}"
                 page.append(get_item_json(result, font_path, char_space))
             page.append("\n")
+    page.append("\n")
+    page.append({
+        "translate": description[0],
+        "color":"black",
+        "fallback": description[1].get(Lang.en_us, "")
+    })
     return json.dumps(page)
 
 
