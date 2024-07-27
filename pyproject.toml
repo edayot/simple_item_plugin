@@ -8,8 +8,9 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-bolt = "^0.48.0"
+bolt = ">=0.48.0"
 model-resolver = ">=0.10.0"
+beet = ">=0.108.3"
 
 
 [build-system]
