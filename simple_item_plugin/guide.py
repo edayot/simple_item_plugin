@@ -93,6 +93,9 @@ def generate_first_page(draft: Generator, items: Iterable[GuideItem]):
 
     
 def generate_guide(ctx: Context, draft: Generator):
+    guide = Item.get_from_id(ctx, "guide")
+    if not guide:
+        raise ValueError("The guide item is not present in the registry")
     air = VanillaItem("minecraft:air")
     # Render the registry
     all_items= get_item_list(ctx)
@@ -135,7 +138,7 @@ def generate_guide(ctx: Context, draft: Generator):
             draft
         ))
     pages.insert(0,generate_first_page(draft, all_items.values()))
-    create_guide(draft, pages)
+    create_modifier(draft, pages)
 
 
 
@@ -343,21 +346,16 @@ def image_count(count: int) -> Image.Image:
 
 
 
-def create_guide(draft: Generator, pages: Iterable[str]):
-    Item(
-        id="guide",
-        base_item="minecraft:written_book",
-        item_name=(
-            f"{NAMESPACE}.item.guide",
-            {Lang.en_us: "Guide", Lang.fr_fr: "Guide"},
-        ),
-        components_extra={
+def create_modifier(draft: Generator, pages: Iterable[str]):
+    item_modifier = ItemModifier({
+        "function": "minecraft:set_components",
+        "components": {
             "minecraft:written_book_content": {
                 "title": "Guide",
                 "author": "AirDox_",
                 "pages": pages,
                 "resolved": True
-            },
-            "minecraft:enchantment_glint_override": False,
-        },
-    ).export(draft)
+            }
+        }
+    })
+    draft.data.item_modifiers[f"{NAMESPACE}:impl/guide"] = item_modifier
