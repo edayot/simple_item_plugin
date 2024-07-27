@@ -11,6 +11,10 @@ from nbtlib.tag import Compound, String, Byte
 from nbtlib import serialize_tag
 import json
 from pydantic import BaseModel
+import logging
+from copy import deepcopy
+
+logger = logging.getLogger("simple_item_plugin")
 
 if TYPE_CHECKING:
     from simple_item_plugin.mineral import Mineral
@@ -363,15 +367,19 @@ kill @s
 
     def create_assets(self, ctx: Union[Context, Generator]):
         key = f"minecraft:item/{self.base_item.split(':')[1]}"
+        current_model = ctx.assets.models.get(key, None)
         rp = ResourcePack()
         
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
         vanilla = real_ctx.inject(Vanilla).releases[real_ctx.meta["minecraft_version"]]
         # get the default model for this item
         model = Model(vanilla.assets.models[key].data.copy())
+        if "overrides" in model.data:
+            self.create_overrides(ctx, model, rp, key)
+            ctx.assets.merge(rp)
+            return
+                
         model.data["overrides"] = []
-
-
         # add the custom model data to the model
         model.data["overrides"].append(
             {
@@ -390,6 +398,8 @@ kill @s
                 ctx.assets.models[self.model_path] = Model(
                     {"parent": "item/generated", "textures": {"layer0": self.model_path}}
                 )
+                if not self.model_path in ctx.assets.textures:
+                    logger.warning(f"Texture {self.model_path} not found in the resource pack")
             else:
                 ctx.assets.models[self.model_path] = Model(
                     {
@@ -420,6 +430,44 @@ kill @s
                 }
             )
 
+    def create_overrides(self, ctx: Union[Context, Generator], model: Model, rp: ResourcePack, key: str):
+        if any([
+            o["predicate"].get("custom_model_data", None) == self.custom_model_data(ctx)
+            for o in ctx.assets.models.get(key, Model()).data.get("overrides", [])
+        ]):
+            # user defined override already exists, no need to create a new one
+            return
+        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
+        vanilla = real_ctx.inject(Vanilla)
+        release = vanilla.releases[real_ctx.meta["minecraft_version"]]
+        new_overrides = []
+        for override in list(model.data["overrides"]):
+            o = deepcopy(override)
+            o["predicate"]["custom_model_data"] = self.custom_model_data(ctx)
+            namespace_model_path = self.model_path + "/" + o["model"].split("/")[-1]
+            minecraft_model_path = o["model"]
+            minecraft_model_path = f"minecraft:{minecraft_model_path}" if ":" not in minecraft_model_path else minecraft_model_path
+
+            # create the model
+            minecraft_model = Model(release.assets.models[minecraft_model_path].data.copy())
+            for texture_key, texture_path in minecraft_model.data["textures"].items():
+                new_texture_path = self.model_path + "/" + texture_path.split("/")[-1]
+                if new_texture_path not in real_ctx.assets.textures:
+                    logger.warning(f"Texture {new_texture_path} not found in the resource pack")
+                minecraft_model.data["textures"][texture_key] = new_texture_path
+            rp.models[namespace_model_path] = minecraft_model
+            o["model"] = namespace_model_path
+            new_overrides.append(o)
+        model.data["overrides"].append({
+            "predicate": {"custom_model_data": self.custom_model_data(ctx)},
+            "model": self.model_path,
+        })
+        model.data["overrides"].extend(new_overrides)
+        rp.models[key] = model
+        rp.models[self.model_path] = Model(
+            {"parent": "item/generated", "textures": {"layer0": self.model_path}}
+        )
+        
     def export(self, ctx: Union[Context, Generator]):
         self.create_loot_table(ctx)
         self.create_translation(ctx)
