@@ -1,5 +1,5 @@
 from simple_item_plugin.item import Item
-from simple_item_plugin.crafting import VanillaItem, ShapedRecipeRegistry
+from simple_item_plugin.crafting import VanillaItem
 from beet import Context, Texture, Font, ItemModifier, LootTable, Generator, configurable
 from model_resolver import beet_default as model_resolver
 from PIL import Image, ImageDraw, ImageFont
@@ -19,10 +19,10 @@ class GuideItem:
         return hash(self.item)
 
 
-def get_item_list() -> dict[str, GuideItem]:
+def get_item_list(ctx: Context) -> dict[str, GuideItem]:
     items = dict()
     items["minecraft:air"] = GuideItem(VanillaItem("minecraft:air"))
-    for recipe in ShapedRecipeRegistry.values():
+    for recipe in ctx.meta["registry"].get("recipes", []):
         for row in recipe.items:
             for item in row:
                 if item:
@@ -30,6 +30,11 @@ def get_item_list() -> dict[str, GuideItem]:
         items[recipe.result[0].id] = GuideItem(recipe.result[0])
     return items
 
+def search_item(ctx: Context, item: GuideItem):
+    for recipe in ctx.meta["registry"].get("recipes", []):
+        if recipe.result[0].id == item.item.id:
+            return recipe
+    return None
 
 
 
@@ -54,7 +59,7 @@ def guide(ctx: Context, opts: SimpleItemPluginOptions):
 def generate_guide(ctx: Context, draft: Generator):
     air = VanillaItem("minecraft:air")
     # Render the registry
-    all_items= get_item_list()
+    all_items= get_item_list(ctx)
     ctx.meta["model_resolver"]["filter"] = [i.item.model_path for i in all_items.values()]
     ctx.require(model_resolver)
     for item in all_items.values():
@@ -72,7 +77,7 @@ def generate_guide(ctx: Context, draft: Generator):
     pages = []
     page_index = 0
     for id, item in all_items.items():
-        if not (craft := ShapedRecipeRegistry.get(item.item)):
+        if not (craft := search_item(ctx, item)):
             continue
         item.page_index = page_index
         page_index += 1
@@ -251,7 +256,6 @@ def image_count(count: int) -> Image.Image:
 
 
 def create_guide(draft: Generator, pages: Iterable[str]):
-    print("Creating guide")
     Item(
         id="guide",
         item_name=(

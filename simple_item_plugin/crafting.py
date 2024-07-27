@@ -47,8 +47,6 @@ class VanillaItem:
         return {"id": self.id}
 
 ItemType = Union[Item, VanillaItem, None]
-ShapedRecipeRegistry : dict[ItemType, "ShapedRecipe"] = {}
-
 ItemLine = Tuple[ItemType, ItemType, ItemType]
 
 @dataclass
@@ -56,14 +54,12 @@ class ShapedRecipe:
     items: Tuple[ItemLine, ItemLine, ItemLine]
     result: tuple[Item | VanillaItem, int]
 
-    def __post_init__(self):
-        
-        ShapedRecipeRegistry[self.result[0]] = self
 
     def export(self, ctx: Context):
         """
         This function export the smithed crafter recipes to the ctx variable.
         """
+        ctx.meta.setdefault("registry", {}).setdefault("recipes", []).append(self)
         air = lambda i: Compound({"id": String("minecraft:air"), "Slot": Byte(i)})
 
         smithed_recipe = {}
