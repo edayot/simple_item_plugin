@@ -108,23 +108,54 @@ def create_font(draft: Generator, items: Iterable[GuideItem]):
     release = '_release'
     if False:
         release = ''
+    none_2 = f"{NAMESPACE}:item/font/none_2.png"
+    none_3 = f"{NAMESPACE}:item/font/none_3.png"
+    none_4 = f"{NAMESPACE}:item/font/none_4.png"
+    none_5 = f"{NAMESPACE}:item/font/none_5.png"
+    template_craft = f"{NAMESPACE}:item/font/template_craft.png"
+    template_result = f"{NAMESPACE}:item/font/template_result.png"
+
+    github = f"{NAMESPACE}:item/logo/github.png"
+    pmc = f"{NAMESPACE}:item/logo/pmc.png"
+    smithed = f"{NAMESPACE}:item/logo/smithed.png"
+    modrinth = f"{NAMESPACE}:item/logo/modrinth.png"
+
+    root_path = pathlib.Path(__file__).parent / "assets" / "guide"
+
+    namespace_path_to_real_path : dict[str, pathlib.Path] = {
+        none_2: root_path / f"none_2{release}.png",
+        none_3: root_path / f"none_3{release}.png",
+        none_4: root_path / f"none_4{release}.png",
+        none_5: root_path / f"none_5{release}.png",
+        template_craft: root_path / "template_craft.png",
+        template_result: root_path / "template_result.png",
+        github: root_path / "logo" / "github.png",
+        pmc: root_path / "logo" / "pmc.png",
+        smithed: root_path / "logo" / "smithed.png",
+        modrinth: root_path / "logo" / "modrinth.png",
+    }
+    for namespace_path, real_path in namespace_path_to_real_path.items():
+        draft.assets.textures[namespace_path.removesuffix(".png")] = Texture(source_path=real_path)
+
+    
+
     draft.assets.fonts[font_path] = Font({
         "providers": [
         {
             "type": "reference",
             "id": "minecraft:include/space"
         },
-        { "type": "bitmap", "file": f"{NAMESPACE}:item/font/none_2{release}.png",				"ascent": 7, "height": 8, "chars": ["\uef00"] },
-        { "type": "bitmap", "file": f"{NAMESPACE}:item/font/none_3{release}.png",				"ascent": 7, "height": 8, "chars": ["\uef01"] },
-        { "type": "bitmap", "file": f"{NAMESPACE}:item/font/none_4{release}.png",				"ascent": 7, "height": 8, "chars": ["\uef02"] },
-        { "type": "bitmap", "file": f"{NAMESPACE}:item/font/none_5{release}.png",				"ascent": 7, "height": 8, "chars": ["\uef03"] },
-        { "type": "bitmap", "file": f"{NAMESPACE}:item/font/template_craft.png",				"ascent": -3, "height": 68, "chars": ["\uef13"] },
-        { "type": "bitmap", "file": f"{NAMESPACE}:item/font/template_result.png",				"ascent": -20, "height": 34, "chars": ["\uef14"] },
+        { "type": "bitmap", "file": none_2,				"ascent": 7, "height": 8, "chars": ["\uef00"] },
+        { "type": "bitmap", "file": none_3,				"ascent": 7, "height": 8, "chars": ["\uef01"] },
+        { "type": "bitmap", "file": none_4,				"ascent": 7, "height": 8, "chars": ["\uef02"] },
+        { "type": "bitmap", "file": none_5,				"ascent": 7, "height": 8, "chars": ["\uef03"] },
+        { "type": "bitmap", "file": template_craft,				"ascent": -3, "height": 68, "chars": ["\uef13"] },
+        { "type": "bitmap", "file": template_result,				"ascent": -20, "height": 34, "chars": ["\uef14"] },
 
-        { "type": "bitmap", "file": f"{NAMESPACE}:item/logo/github.png",				        "ascent": 7, "height": 25, "chars": ["\uee01"] },
-        { "type": "bitmap", "file": f"{NAMESPACE}:item/logo/pmc.png",				            "ascent": 7, "height": 25, "chars": ["\uee02"] },
-        { "type": "bitmap", "file": f"{NAMESPACE}:item/logo/smithed.png",				        "ascent": 7, "height": 25, "chars": ["\uee03"] },
-        { "type": "bitmap", "file": f"{NAMESPACE}:item/logo/modrinth.png",				        "ascent": 7, "height": 25, "chars": ["\uee04"] },
+        { "type": "bitmap", "file": github,				        "ascent": 7, "height": 25, "chars": ["\uee01"] },
+        { "type": "bitmap", "file": pmc,				            "ascent": 7, "height": 25, "chars": ["\uee02"] },
+        { "type": "bitmap", "file": smithed,				        "ascent": 7, "height": 25, "chars": ["\uee03"] },
+        { "type": "bitmap", "file": modrinth,				        "ascent": 7, "height": 25, "chars": ["\uee04"] },
         ],
     })
     for item in items:
@@ -258,6 +289,7 @@ def image_count(count: int) -> Image.Image:
 def create_guide(draft: Generator, pages: Iterable[str]):
     Item(
         id="guide",
+        base_item="minecraft:written_book",
         item_name=(
             f"{NAMESPACE}.item.guide",
             {Lang.en_us: "Guide", Lang.fr_fr: "Guide"},
