@@ -444,7 +444,7 @@ kill @s
                         },
                     }
                 )
-            if not self.model_path in ctx.assets.textures:
+            if not self.model_path in real_ctx.assets.textures:
                 logger.warning(f"Texture {self.model_path} not found in the resource pack")
         elif self.block_properties.all_same_faces:
             ctx.assets.models[self.model_path] = Model(
@@ -543,7 +543,7 @@ kill @s
                 new_texture_path, trow_warning = self.get_new_texture_path(minecraft_model, texture_key, texture_path, merge_policy)
                 if new_texture_path:
                     minecraft_model.data["textures"][texture_key] = new_texture_path
-                    if trow_warning and new_texture_path not in ctx.assets.textures:
+                    if trow_warning and new_texture_path not in real_ctx.assets.textures:
                         logger.warning(f"Texture {new_texture_path} not found in the resource pack")
             for texture_key, texture_path in list(minecraft_model.data["textures"].items()):
                 # test if we have to delete the texture
