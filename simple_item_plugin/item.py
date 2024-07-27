@@ -13,6 +13,7 @@ import json
 from pydantic import BaseModel
 import logging
 from copy import deepcopy
+from weld_deps.main import WeldDepsConfig
 
 logger = logging.getLogger("simple_item_plugin")
 
@@ -174,6 +175,14 @@ class Item(BaseModel):
     def create_custom_block(self, ctx: Union[Context, Generator]):
         if not self.block_properties:
             return
+        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
+        deps = real_ctx.validate("weld_deps", WeldDepsConfig)
+        assert deps
+        assert deps.deps
+        my_deps = ["custom_block_ext", "%20chunk_scan.ores", "chunk_scan"]
+        for dep in my_deps:
+            assert dep in [d.id for d in deps.deps], f"Missing dependency {dep} in the beet config file"
+
         self.create_custom_block_placement(ctx)
         self.create_custom_block_destroy(ctx)
         self.handle_world_generation(ctx)
