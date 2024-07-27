@@ -53,7 +53,28 @@ ItemLine = Tuple[ItemType, ItemType, ItemType]
 class ShapedRecipe:
     items: Tuple[ItemLine, ItemLine, ItemLine]
     result: tuple[Item | VanillaItem, int]
+    flags: list[str] = field(default_factory=lambda: [])
 
+    def get_command(self, if_data_storage: str):
+        if not self.flags:
+            return f"""
+execute 
+    store result score @s smithed.data 
+    if entity @s[scores={{smithed.data=0}}] 
+    {if_data_storage}
+    run {self.result[0].result_command(self.result[1])}
+"""
+        flags_command = f'data modify storage smithed.crafter:input flags set value {json.dumps(self.flags)}'
+        function_name = f"~/{self.result[0].id.removeprefix('minecraft:')}_{self.result[1]}"
+        return f"""
+execute 
+    if entity @s[scores={{smithed.data=0}}] 
+    {if_data_storage}
+    run function {function_name}:
+        {flags_command}
+        {self.result[0].result_command(self.result[1])}
+        scoreboard players set @s smithed.data 1
+"""
 
     def export(self, ctx: Context):
         """
@@ -79,13 +100,6 @@ class ShapedRecipe:
 
         function_path = f"{NAMESPACE}:impl/smithed.crafter/recipes"
         function_path_calls = f"{NAMESPACE}:impl/calls/smithed.crafter/recipes"
-        command = f"""
-execute 
-    store result score @s smithed.data 
-    if entity @s[scores={{smithed.data=0}}] 
-    {if_data_storage}
-    run {self.result[0].result_command(self.result[1])}
-"""
         tag_smithed_crafter_recipes = "smithed.crafter:event/recipes"
         tag_namespace = f"{NAMESPACE}:smithed.crafter/recipes"
         if not tag_smithed_crafter_recipes in ctx.data.function_tags:
@@ -103,7 +117,7 @@ execute
                 function_path_calls
             )
 
-        ctx.data.functions[function_path].append(command)
+        ctx.data.functions[function_path].append(self.get_command(if_data_storage))
 
 
 @dataclass
