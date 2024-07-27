@@ -341,9 +341,14 @@ kill @s
     def set_components(self):
         res = []
         for key, value in self.components_extra.items():
-            res.append(
-                {"function": "minecraft:set_components", "components": {key: value}}
-            )
+            if not key == "minecraft:custom_data":
+                res.append(
+                    {"function": "minecraft:set_components", "components": {key: value}}
+                )
+            else:
+                res.append(
+                    {"function": "minecraft:set_custom_data", "tag": value}
+                )
         return res
 
     def create_loot_table(self, ctx: Union[Context, Generator]):
