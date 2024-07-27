@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "simple-item-plugin"
-version = "0.9.1"
+version = "0.10.0"
 description = ""
 authors = ["edayot <pro.e.dayot@gmail.com>"]
 license = "MIT"
