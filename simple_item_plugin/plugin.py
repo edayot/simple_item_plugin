@@ -16,6 +16,8 @@ def beet_default(ctx: Context):
     if stable_cache.exists():
         with open(stable_cache, "r") as f:
             ctx.meta["simple_item_plugin"]["stable_cache"] = json.load(f)
+    project_name = ctx.project_name.split("_")
+    project_name = "".join([word.capitalize() for word in project_name])
     export_translated_string(ctx, (f"{NAMESPACE}.name", {Lang.en_us: ctx.project_name, Lang.fr_fr: ctx.project_name}))
     yield
     ctx.require(guide)
