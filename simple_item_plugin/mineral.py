@@ -79,6 +79,7 @@ class SubItem(BaseModel):
             "translate": self.translation[0],
             "with": [{"translate": translation[0]}],
             "color": "white",
+            "fallback": self.translation[1][Lang.en_us].replace("%s", translation[1][Lang.en_us])
         }
 
     def get_components(self, ctx: Context) -> dict[str, Any]:

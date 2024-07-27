@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from simple_item_plugin.types import TextComponent, TextComponent_base, NAMESPACE, TranslatedString
+from simple_item_plugin.types import TextComponent, TextComponent_base, NAMESPACE, TranslatedString, Lang
 from beet import Context, FunctionTag, Function, LootTable, Model, Texture, ResourcePack, Generator
 from PIL import Image
 from typing import Any, Optional, TYPE_CHECKING, Union
@@ -391,6 +391,7 @@ kill @s
         return {
             "translate": self.item_name[0],
             "color": "white",
+            "fallback": self.item_name[1][Lang.en_us],
         }
 
     def create_assets(self, ctx: Union[Context, Generator]):
