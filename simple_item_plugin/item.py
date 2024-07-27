@@ -4,7 +4,7 @@ from beet import Context, FunctionTag, Function, LootTable, Model, Texture, Reso
 from PIL import Image
 from typing import Any, Optional, TYPE_CHECKING, Union
 from typing_extensions import TypedDict, NotRequired, Literal, Optional
-from simple_item_plugin.utils import export_translated_string
+from simple_item_plugin.utils import export_translated_string, SimpleItemPluginOptions
 from beet.contrib.vanilla import Vanilla
 
 from nbtlib.tag import Compound, String, Byte
@@ -56,7 +56,8 @@ class Item(BaseModel):
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
         cmd_cache = real_ctx.meta["simple_item_plugin"]["stable_cache"].setdefault("cmd", {})
         if self.id not in cmd_cache:
-            cmd_cache[self.id] = max(cmd_cache.values(), default=real_ctx.meta["simple_item_plugin"].get("custom_model_data", 0)) + 1
+            opts = real_ctx.validate("simple_item_plugin", SimpleItemPluginOptions)
+            cmd_cache[self.id] = max(cmd_cache.values(), default=opts.custom_model_data) + 1
         return cmd_cache[self.id]
         
     block_properties: BlockProperties | None = None

@@ -1,9 +1,9 @@
 from simple_item_plugin.item import Item
 from simple_item_plugin.crafting import VanillaItem, ShapedRecipeRegistry
-from beet import Context, Texture, Font, ItemModifier, LootTable, Generator
+from beet import Context, Texture, Font, ItemModifier, LootTable, Generator, configurable
 from model_resolver import beet_default as model_resolver
 from PIL import Image, ImageDraw, ImageFont
-from simple_item_plugin.utils import NAMESPACE, Lang
+from simple_item_plugin.utils import NAMESPACE, Lang, SimpleItemPluginOptions
 import json
 import pathlib
 from dataclasses import dataclass
@@ -39,11 +39,14 @@ def char_index_number():
     CHAR_INDEX_NUMBER += CHAR_OFFSET
     return CHAR_INDEX_NUMBER
 
-def guide(ctx: Context):
+@configurable("simple_item_plugin", validator=SimpleItemPluginOptions)
+def guide(ctx: Context, opts: SimpleItemPluginOptions):
     global CHAR_INDEX_NUMBER, COUNT_TO_CHAR
     CHAR_INDEX_NUMBER = 0x0030
     COUNT_TO_CHAR = {}
 
+    if not opts.generate_guide:
+        return
     with ctx.generate.draft() as draft:
         draft.cache("guide", "guide")
         generate_guide(ctx, draft)

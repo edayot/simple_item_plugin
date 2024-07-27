@@ -2,6 +2,7 @@ import random
 from beet import Context, Language, Generator
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
 from typing import Union
+from pydantic import BaseModel
 
 
 def generate_uuid() -> list[int]:
@@ -23,3 +24,8 @@ def export_translated_string(ctx: Union[Context, Generator], translation: Transl
         ctx.assets.languages[f"{NAMESPACE}:{lang.value}"].data[
             translation[0]
         ] = translate
+
+
+class SimpleItemPluginOptions(BaseModel):
+    custom_model_data: int
+    generate_guide: bool = True
