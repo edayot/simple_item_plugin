@@ -5,7 +5,7 @@ from typing import Any, Literal, get_args, Optional
 from typing_extensions import TypedDict, NotRequired
 from simple_item_plugin.utils import export_translated_string
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
-from simple_item_plugin.item import Item, BlockProperties
+from simple_item_plugin.item import Item, BlockProperties, MergeOverridesPolicy
 from simple_item_plugin.crafting import ShapedRecipe, ShapelessRecipe, NBTSmelting, VanillaItem, SimpledrawerMaterial
 
 from PIL import Image
@@ -104,6 +104,10 @@ class SubItem(BaseModel):
     def export(self, ctx: Context):
         export_translated_string(ctx, self.translation)
 
+    @property
+    def merge_overrides_policy(self) -> dict[str, MergeOverridesPolicy]:
+        return {}
+
 
 class SubItemBlock(SubItem):
     block_properties: BlockProperties = field(
@@ -172,6 +176,13 @@ class SubItemArmor(SubItemDamagable):
             case _:
                 raise ValueError("Invalid armor type")
 
+    @property
+    def merge_overrides_policy(self) -> dict[str, MergeOverridesPolicy]:
+        return {
+            "layer0": MergeOverridesPolicy.clear,
+            "layer1": MergeOverridesPolicy.use_model_path,
+            "layer2": MergeOverridesPolicy.use_vanilla,
+        }
 
 class SubItemWeapon(SubItemDamagable):
     attack_damage: float
@@ -362,6 +373,7 @@ class Mineral:
                 block_properties=subitem.block_properties,
                 is_cookable=subitem.is_cookable,
                 is_armor=isinstance(subitem, SubItemArmor),
+                merge_overrides_policy=subitem.merge_overrides_policy,
                 ).export(ctx)
         self.generate_crafting_recipes(ctx)
         return self
