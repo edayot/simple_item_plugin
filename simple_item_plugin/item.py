@@ -13,7 +13,6 @@ import json
 from pydantic import BaseModel
 import logging
 from copy import deepcopy
-from weld_deps.main import WeldDepsConfig
 from enum import Enum
 
 logger = logging.getLogger("simple_item_plugin")
@@ -184,11 +183,13 @@ class Item(BaseModel):
         lore.append({"translate": f"{NAMESPACE}.name", "color": "blue", "italic": True})
         return lore
 
-    def create_custom_data(self):
+    def create_custom_data(self, ctx: Union[Context, Generator]):
         res : dict[str, Any] = {
             "smithed": {"id": self.namespace_id},
         }
         if self.is_cookable:
+            real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
+            real_ctx.meta["required_deps"].add("nbtsmelting")
             res["nbt_smelting"] = 1
         if self.block_properties:
             res["smithed"]["block"] = {"id": self.namespace_id}
@@ -198,12 +199,8 @@ class Item(BaseModel):
         if not self.block_properties:
             return
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        deps = real_ctx.validate("weld_deps", WeldDepsConfig)
-        assert deps
-        assert deps.deps
-        my_deps = ["custom_block_ext", "%20chunk_scan.ores", "chunk_scan"]
-        for dep in my_deps:
-            assert dep in [d.id for d in deps.deps], f"Missing dependency {dep} in the beet config file"
+        deps_needed = ["custom_block_ext", "%20chunk_scan.ores", "chunk_scan"]
+        real_ctx.meta["required_deps"].update(deps_needed)
 
         self.create_custom_block_placement(ctx)
         self.create_custom_block_destroy(ctx)
@@ -372,7 +369,7 @@ kill @s
                                         "function": "minecraft:set_components",
                                         "components": {
                                             "minecraft:custom_model_data": self.custom_model_data(ctx),
-                                            "minecraft:custom_data": self.create_custom_data(),
+                                            "minecraft:custom_data": self.create_custom_data(ctx),
                                         },
                                     },
                                     {

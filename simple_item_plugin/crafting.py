@@ -80,6 +80,7 @@ execute
         """
         This function export the smithed crafter recipes to the ctx variable.
         """
+        ctx.meta["required_deps"].add("smithed.crafter.dev")
         ctx.meta.setdefault("registry", {}).setdefault("recipes", []).append(self)
         air = lambda i: Compound({"id": String("minecraft:air"), "Slot": Byte(i)})
 
