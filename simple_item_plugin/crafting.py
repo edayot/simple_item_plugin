@@ -12,10 +12,10 @@ from nbtlib.tag import (
     Float,
     Double,
 )
-from typing import Any, Literal, Union, Tuple
+from typing import Any, Literal, Union, Tuple, Optional
 from beet import Context, Function, FunctionTag, Recipe
 from simple_item_plugin.item import Item
-from simple_item_plugin.types import NAMESPACE
+from simple_item_plugin.types import NAMESPACE, TranslatedString
 import json
 
 
@@ -46,7 +46,46 @@ class VanillaItem:
     def minimal_representation(self) -> dict:
         return {"id": self.id}
 
-ItemType = Union[Item, VanillaItem, None]
+@dataclass
+class ExternalItem:
+    id: str
+    loot_table_path: str
+    model_path: str
+    minimal_representation: dict
+    guide_description: Optional[TranslatedString] = None
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+    
+    def to_nbt(self, i: int) -> Compound:
+        # return the nbt tag of the item smithed id "SelectedItem.components."minecraft:custom_data".smithed.id"
+        return Compound(
+            {
+                "components": Compound(
+                    {
+                        "minecraft:custom_data": Compound(
+                            {
+                                "smithed": Compound(
+                                    {"id": String(self.id)}
+                                )
+                            }
+                        )
+                    }
+                ),
+                "Slot": Byte(i),
+            }
+        )
+    
+    def result_command(self, count: int, type : str = "block", slot : int = 16) -> str:
+        if type == "block":
+            return f"item replace block ~ ~ ~ container.{slot} with {self.id} {count} "
+        elif type == "entity":
+            return f"item replace entity @s container.{slot} with {self.id} {count} "
+        else:
+            raise ValueError(f"Invalid type {type}")
+    
+
+ItemType = Union[Item, VanillaItem, ExternalItem, None]
 ItemLine = Tuple[ItemType, ItemType, ItemType]
 
 @dataclass
@@ -76,12 +115,15 @@ execute
         scoreboard players set @s smithed.data 1
 """
 
-    def export(self, ctx: Context):
+    def export(self, ctx: Context, is_external_recipe: bool = False):
         """
         This function export the smithed crafter recipes to the ctx variable.
+        if is_external_recipe is True, the recipe will only be added to the registry and not to the function.
         """
         ctx.meta["required_deps"].add("smithed.crafter.dev")
         ctx.meta.setdefault("registry", {}).setdefault("recipes", []).append(self)
+        if is_external_recipe:
+            return
         air = lambda i: Compound({"id": String("minecraft:air"), "Slot": Byte(i)})
 
         smithed_recipe = {}

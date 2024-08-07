@@ -1,5 +1,5 @@
 from simple_item_plugin.item import Item
-from simple_item_plugin.crafting import VanillaItem
+from simple_item_plugin.crafting import VanillaItem, ExternalItem
 from beet import Context, Texture, Font, ItemModifier, LootTable, Generator, configurable
 from model_resolver import beet_default as model_resolver
 from PIL import Image, ImageDraw, ImageFont
@@ -11,7 +11,7 @@ from typing import Iterable
 
 @dataclass
 class GuideItem:
-    item : Item | VanillaItem
+    item : Item | VanillaItem | ExternalItem
     char_index : int = 0
     page_index : int = -1
 
@@ -266,12 +266,14 @@ def generate_craft(craft: list[list[GuideItem]], result: GuideItem, count: int, 
     # Create a font for the page
     font_path = f'{NAMESPACE}:pages'
     page : list[str | dict] = [""]
-    item_name = result.item.get_item_name() if isinstance(result.item, Item) else result.item.id
-    description = result.item.guide_description if isinstance(result.item, Item) else None
+    if isinstance(result.item, VanillaItem):
+        raise ValueError("Vanilla item are not supported")
+    elif isinstance(result.item, ExternalItem) or isinstance(result.item, Item):
+        item_name = result.item.minimal_representation["components"]["minecraft:item_name"]
+        item_name = json.loads(item_name)
+        description = result.item.guide_description
     description = description if description else ("", {})
     export_translated_string(draft, description)
-    if isinstance(item_name, str):
-        item_name = {"text":item_name}
     item_name["font"] = f"{NAMESPACE}:medium_font"
     item_name["color"] = "black"
     page.append(item_name)
