@@ -5,7 +5,7 @@ from simple_item_plugin.utils import export_translated_string, Lang
 from simple_item_plugin.guide import guide
 from simple_item_plugin.versioning import beet_default as versioning
 from mecha import beet_default as mecha
-from weld_deps.main import WeldDepsConfig
+from weld_deps.main import DepsConfig as WeldDepsConfig
 import json
 
 
