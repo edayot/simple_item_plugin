@@ -53,7 +53,7 @@ def guide(ctx: Context, opts: SimpleItemPluginOptions):
     if not opts.generate_guide:
         return
     with ctx.generate.draft() as draft:
-        # draft.cache("guide", "guide")
+        draft.cache("guide", "guide")
         generate_guide(ctx, draft)
 
 def generate_first_page(draft: Generator, items: Iterable[GuideItem]):
