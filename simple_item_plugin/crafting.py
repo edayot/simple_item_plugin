@@ -12,7 +12,7 @@ from nbtlib.tag import (
     Float,
     Double,
 )
-from typing import Any, Literal, Union, Tuple, Optional
+from typing import Any, Literal, Union, Tuple, Optional, Generator
 from beet import Context, Function, FunctionTag, Recipe
 from simple_item_plugin.item import Item
 from simple_item_plugin.types import NAMESPACE, TranslatedString
@@ -85,13 +85,14 @@ class ExternalItem:
             raise ValueError(f"Invalid type {type}")
     
 
-ItemType = Union[Item, VanillaItem, ExternalItem, None]
+ItemTypeStrict = Union[Item, VanillaItem, ExternalItem]
+ItemType = Union[ItemTypeStrict, None]
 ItemLine = Tuple[ItemType, ItemType, ItemType]
 
 @dataclass
 class ShapedRecipe:
     items: Tuple[ItemLine, ItemLine, ItemLine]
-    result: tuple[Item | VanillaItem, int]
+    result: tuple[ItemTypeStrict, int]
     flags: list[str] = field(default_factory=lambda: [])
 
     def get_command(self, if_data_storage: str):
@@ -165,13 +166,60 @@ execute
 
 @dataclass
 class ShapelessRecipe:
-    items: list[tuple[Item | VanillaItem, int]]
-    result: tuple[Item | VanillaItem, int]
+    items: list[tuple[ItemTypeStrict, int]]
+    result: tuple[ItemTypeStrict, int]
+
+    @property
+    def total_count(self):
+        return sum([x[1] for x in self.items])
+    
+    def items_one_by_one(self) -> Generator[ItemTypeStrict, None, None]:
+        for item, count in self.items:
+            for _ in range(count):
+                yield item
+    def items_three_by_three(self) -> Generator[ItemLine, None, None]:
+        temp : list[ItemTypeStrict] = []
+        for i, item in enumerate(self.items_one_by_one()):
+            temp.append(item)
+            if len(temp) == 3:
+                yield (temp[0], temp[1], temp[2])
+                temp = []
+        if len(temp) == 1:
+            yield (temp[0], None, None)
+        elif len(temp) == 2:
+            yield (temp[0], temp[1], None)
+        elif len(temp) == 3:
+            yield (temp[0], temp[1], temp[2])
+    
+
+    def shaped_recipe(self, ctx: Context):
+        """
+        This function converts the shapeless recipe to a shaped recipe.
+        Only used to generate crafts in the guide.
+        """
+        lines : list[ItemLine] = []
+        for item_line in self.items_three_by_three():
+            lines.append(item_line)
+        if len(lines) == 1:
+            real_lines = (lines[0], (None, None, None), (None, None, None))
+        elif len(lines) == 2:
+            real_lines = (lines[0], lines[1], (None, None, None))
+        elif len(lines) == 3:
+            real_lines = (lines[0], lines[1], lines[2])
+        else:
+            raise ValueError("Invalid number of lines")
+        ShapedRecipe(
+            real_lines,
+            self.result
+        ).export(ctx, is_external_recipe=True)
+
+        
 
     def export(self, ctx: Context):
         """
         This function export the smithed crafter recipes to the ctx variable.
         """
+        self.shaped_recipe(ctx)
         global_count = len(self.items)
 
         recipe = List[Compound]([])
