@@ -29,3 +29,4 @@ def export_translated_string(ctx: Union[Context, Generator], translation: Transl
 class SimpleItemPluginOptions(BaseModel):
     custom_model_data: int
     generate_guide: bool = True
+    add_give_all_function: bool = True
