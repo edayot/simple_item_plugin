@@ -1,7 +1,7 @@
 import random
 from beet import Context, Language, Generator
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
-from typing import Union
+from typing import Union, Optional
 from pydantic import BaseModel
 
 
@@ -30,3 +30,4 @@ class SimpleItemPluginOptions(BaseModel):
     custom_model_data: int
     generate_guide: bool = True
     add_give_all_function: bool = True
+    render_path_for_pack_png: Optional[str] = None
