@@ -1,5 +1,5 @@
 from simple_item_plugin.item import Item
-from simple_item_plugin.crafting import VanillaItem, ExternalItem
+from simple_item_plugin.crafting import VanillaItem, ExternalItem, ShapedRecipe
 from beet import Context, Texture, Font, ItemModifier, LootTable, Generator, configurable
 from model_resolver import beet_default as model_resolver
 from PIL import Image, ImageDraw, ImageFont
@@ -23,6 +23,7 @@ def get_item_list(ctx: Context) -> dict[str, GuideItem]:
     items = dict()
     items["minecraft:air"] = GuideItem(VanillaItem("minecraft:air"))
     for recipe in ctx.meta["registry"].get("recipes", []):
+        recipe : ShapedRecipe
         for row in recipe.items:
             for item in row:
                 if item:
