@@ -7,7 +7,18 @@ from simple_item_plugin.utils import NAMESPACE, Lang, SimpleItemPluginOptions, e
 import json
 import pathlib
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, TypeVar
+from itertools import islice
+
+T = TypeVar("T")
+
+def batched(iterable: Iterable[T], n: int) -> Iterable[tuple[T, ...]]:
+    # batched('ABCDEFG', 3) → ABC DEF G
+    if n < 1:
+        raise ValueError('n must be at least one')
+    iterator = iter(iterable)
+    while batch := tuple(islice(iterator, n)):
+        yield batch
 
 @dataclass
 class GuideItem:
@@ -78,17 +89,19 @@ def generate_first_page(draft: Generator, items: Iterable[GuideItem]):
     })
     first_page.append("\n")
 
-    for item in items:
-        if isinstance(item.item, VanillaItem):
-            continue
-        char_item = f"\\u{item.char_index:04x}".encode().decode("unicode_escape")
-        first_page.append(get_item_json(item, f"{NAMESPACE}:pages", f"\uef03{char_item}\uef03"))
-    first_page.append("\n")
-    for item in items:
-        if isinstance(item.item, VanillaItem):
-            continue
-        char_space = "\uef01"
-        first_page.append(get_item_json(item, f"{NAMESPACE}:pages", char_space))
+    items_filtered = [i for i in items if not isinstance(i.item, VanillaItem)]
+
+    for item_batch in batched(items_filtered, 6):
+        for item in item_batch:
+            char_item = f"\\u{item.char_index:04x}".encode().decode("unicode_escape")
+            first_page.append(get_item_json(item, f"{NAMESPACE}:pages", f"\uef03{char_item}\uef03"))
+        first_page.append("\n")
+        for item in item_batch:
+            if isinstance(item.item, VanillaItem):
+                continue
+            char_space = "\uef01"
+            first_page.append(get_item_json(item, f"{NAMESPACE}:pages", char_space))
+        first_page.append("\n")
 
     return json.dumps(first_page)
 
