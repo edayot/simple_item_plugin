@@ -33,7 +33,7 @@ class GuideItem:
 def get_item_list(ctx: Context) -> dict[str, GuideItem]:
     items = dict()
     items["minecraft:air"] = GuideItem(VanillaItem("minecraft:air"))
-    for recipe in ctx.meta["registry"].get("recipes", []):
+    for recipe in ShapedRecipe.iter_values(ctx):
         recipe : ShapedRecipe
         for row in recipe.items:
             for item in row:
@@ -43,7 +43,7 @@ def get_item_list(ctx: Context) -> dict[str, GuideItem]:
     return items
 
 def search_item(ctx: Context, item: GuideItem):
-    for recipe in ctx.meta["registry"].get("recipes", []):
+    for recipe in ShapedRecipe.iter_values(ctx):
         if recipe.result[0].id == item.item.id:
             return recipe
     return None
@@ -107,7 +107,7 @@ def generate_first_page(draft: Generator, items: Iterable[GuideItem]):
 
     
 def generate_guide(ctx: Context, draft: Generator):
-    guide = Item.get_from_id(ctx, "guide")
+    guide = Item.get(ctx, "guide")
     if not guide:
         raise ValueError("The guide item is not present in the registry")
     air = VanillaItem("minecraft:air")

@@ -53,6 +53,16 @@ class Registry(BaseModel):
     def iter_items(cls, ctx: Union[Context, Generator]) -> Iterable[tuple[str, Self]]:
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
         return real_ctx.meta["registry"][cls.__name__].items()
+    
+    @classmethod
+    def iter_values(cls, ctx: Union[Context, Generator]) -> Iterable[Self]:
+        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
+        return real_ctx.meta["registry"][cls.__name__].values()
+    
+    @classmethod
+    def iter_keys(cls, ctx: Union[Context, Generator]) -> Iterable[str]:
+        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
+        return real_ctx.meta["registry"][cls.__name__].keys()
         
 
         
