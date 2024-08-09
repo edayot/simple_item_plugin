@@ -381,7 +381,7 @@ class Mineral(Registry):
                 is_armor=isinstance(subitem, SubItemArmor),
                 merge_overrides_policy=subitem.merge_overrides_policy,
                 ).export(ctx)
-            self.item_group.add_item(new_item)
+            self.item_group.add_item(ctx, new_item)
         for item_part in ["ingot", "raw_ore", "raw_ore_block", "block"]:
             if item:=self.get_item(ctx, item_part):
                 self.item_group.item_icon = item

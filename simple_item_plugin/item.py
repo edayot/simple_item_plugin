@@ -32,7 +32,16 @@ class ItemGroup(Registry):
     def __hash__(self) -> int:
         return hash(self.id)
     
-    def add_item(self, item: "Item") -> Self:
+    def add_item(self, ctx: Context, item: "Item") -> Self:
+        # assert that the item is not already in an item group
+        for item_group in ItemGroup.iter_values(ctx):
+            if item_group == self:
+                continue
+            if item in item_group.items_list:
+                raise ValueError(f"Item {item.id} is already in an item group")
+        for i in self.items_list:
+            if i.id == item.id:
+                return self
         self.items_list.append(item)
         return self
 
