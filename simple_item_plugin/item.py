@@ -127,7 +127,7 @@ class Item(Registry):
         return f"{NAMESPACE}:item/{self.id}"
     
     @property
-    def minimal_representation(self) -> dict:
+    def minimal_representation(self) -> dict[str, Any]:
         return {
             "id": self.base_item,
             "components": {

@@ -4,15 +4,10 @@ from nbtlib.tag import (
     String,
     List,
     Compound,
-    IntArray,
     Int,
     Byte,
-    Short,
-    Long,
-    Float,
-    Double,
 )
-from typing import Any, Literal, Union, Tuple, Optional, Generator
+from typing import Any, Literal, Union, Tuple, Optional, Generator, Callable
 from beet import Context, Function, FunctionTag, Recipe
 from simple_item_plugin.item import Item
 from simple_item_plugin.types import NAMESPACE, TranslatedString
@@ -45,15 +40,19 @@ class VanillaItem:
         return f"minecraft:item/{self.id.replace('minecraft:', '')}"
     
     @property
-    def minimal_representation(self) -> dict:
+    def minimal_representation(self) -> dict[str, Any]:
         return {"id": self.id}
+    
+    @property
+    def guide_description(self) -> Optional[TranslatedString]:
+        return None
 
 @dataclass
 class ExternalItem:
     id: str
     loot_table_path: str
     model_path: str
-    minimal_representation: dict
+    minimal_representation: dict[str, Any]
     guide_description: Optional[TranslatedString] = None
 
     def __hash__(self) -> int:

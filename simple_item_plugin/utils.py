@@ -1,7 +1,7 @@
 import random
 from beet import Context, Language, Generator
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
-from typing import Union, Optional, Self, Iterable, Generic, TypeVar
+from typing import Union, Optional, Self, Iterable
 from pydantic import BaseModel
 
 

@@ -19,17 +19,17 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
     if stable_cache.exists():
         with open(stable_cache, "r") as f:
             ctx.meta["simple_item_plugin"]["stable_cache"] = json.load(f)
-    project_name = ctx.project_name.split("_")
-    project_name = "".join([word.capitalize() for word in project_name])
+    project_name = "".join([
+        word.capitalize() 
+        for word in ctx.project_name.split("_")
+    ])
     export_translated_string(ctx, (f"{NAMESPACE}.name", {Lang.en_us: project_name, Lang.fr_fr: project_name}))
     ctx.meta.setdefault("required_deps", set())
     yield
     ctx.require(guide)
     if opts.add_give_all_function:
         ctx.data.functions[f"{NAMESPACE}:impl/give_all"] = Function()
-        for item_id, item in Item.iter_items(ctx):
-            item_id: str
-            item: Item
+        for item in Item.iter_values(ctx):
             ctx.data.functions[f"{NAMESPACE}:impl/give_all"].append(
                 f"loot give @s loot {item.loot_table_path}"
             )
@@ -39,7 +39,7 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
     opts_weld_deps = ctx.validate("weld_deps", WeldDepsConfig)
     for dep in ctx.meta["required_deps"]:
         assert dep in [
-            k for k, v in opts_weld_deps.deps_dict()
+            k for k, _ in opts_weld_deps.deps_dict()
         ], f"Required dep {dep} not found in weld_deps"
 
     with open(stable_cache, "w") as f:

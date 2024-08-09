@@ -7,7 +7,7 @@ from simple_item_plugin.utils import NAMESPACE, Lang, SimpleItemPluginOptions, e
 import json
 import pathlib
 from dataclasses import dataclass
-from typing import Iterable, TypeVar
+from typing import Iterable, TypeVar, Any
 from itertools import islice
 
 T = TypeVar("T")
@@ -78,7 +78,7 @@ def generate_first_page(draft: Generator, items: Iterable[GuideItem]):
     draft.assets.fonts[big_font_namespace] = Font(source_path=big_font_path)
     draft.assets.fonts[medium_font_namespace] = Font(source_path=medium_font_path)
 
-    first_page : list[str | dict] = [""]
+    first_page : list[str | dict[str, Any]] = [""]
     first_page.append({
         "translate": f"{NAMESPACE}.name",
         "font": big_font_namespace,
@@ -254,7 +254,7 @@ def create_font(draft: Generator, items: Iterable[GuideItem]):
 
 
 
-def get_item_json(item: GuideItem, font_path: str, char : str = "\uef01"):
+def get_item_json(item: GuideItem, font_path: str, char : str = "\uef01") -> dict[str, Any]:
     if item.item.minimal_representation.get("id") == "minecraft:air":
         return {
             "text":char,
@@ -277,15 +277,17 @@ def get_item_json(item: GuideItem, font_path: str, char : str = "\uef01"):
     }
 
 def generate_craft(craft: list[list[GuideItem]], result: GuideItem, count: int, draft: Generator) -> str:
+    global COUNT_TO_CHAR
     # Create a font for the page
     font_path = f'{NAMESPACE}:pages'
-    page : list[str | dict] = [""]
+    page : list[str | dict[str, Any]] = [""]
     if isinstance(result.item, VanillaItem):
         raise ValueError("Vanilla item are not supported")
-    elif isinstance(result.item, ExternalItem) or isinstance(result.item, Item):
-        item_name = result.item.minimal_representation["components"]["minecraft:item_name"]
-        item_name = json.loads(item_name)
-        description = result.item.guide_description
+    
+    
+    item_name = result.item.minimal_representation["components"]["minecraft:item_name"]
+    item_name = json.loads(item_name)
+    description = result.item.guide_description
     description = description if description else ("", {})
     export_translated_string(draft, description)
     item_name["font"] = f"{NAMESPACE}:medium_font"
