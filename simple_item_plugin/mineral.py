@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 from typing import Any, Literal, get_args, Optional
 from typing_extensions import TypedDict, NotRequired
-from simple_item_plugin.utils import export_translated_string
+from simple_item_plugin.utils import export_translated_string, Registry
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
 from simple_item_plugin.item import Item, BlockProperties, MergeOverridesPolicy, ItemGroup
 from simple_item_plugin.crafting import ShapedRecipe, ShapelessRecipe, NBTSmelting, VanillaItem, SimpledrawerMaterial
@@ -281,8 +281,7 @@ def get_default_translated_string(name: AllItemTypes):
             return (f"{NAMESPACE}.mineral_name.boots", {Lang.en_us: "%s Boots", Lang.fr_fr: "Bottes en %s"})
         case _:
             raise ValueError("Invalid item type")
-@dataclass
-class Mineral:
+class Mineral(Registry):
     id: str
     name: TranslatedString
 

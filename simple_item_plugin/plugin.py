@@ -27,7 +27,7 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
     ctx.require(guide)
     if opts.add_give_all_function:
         ctx.data.functions[f"{NAMESPACE}:impl/give_all"] = Function()
-        for item_id, item in Item.items(ctx):
+        for item_id, item in Item.iter_items(ctx):
             item_id: str
             item: Item
             ctx.data.functions[f"{NAMESPACE}:impl/give_all"].append(

@@ -16,7 +16,9 @@ from typing import Any, Literal, Union, Tuple, Optional, Generator
 from beet import Context, Function, FunctionTag, Recipe
 from simple_item_plugin.item import Item
 from simple_item_plugin.types import NAMESPACE, TranslatedString
+from simple_item_plugin.utils import Registry
 import json
+import random
 
 
 
@@ -89,8 +91,8 @@ ItemTypeStrict = Union[Item, VanillaItem, ExternalItem]
 ItemType = Union[ItemTypeStrict, None]
 ItemLine = Tuple[ItemType, ItemType, ItemType]
 
-@dataclass
-class ShapedRecipe:
+class ShapedRecipe(Registry):
+    id: str = field(default_factory=lambda: str(hash(random.random())))
     items: Tuple[ItemLine, ItemLine, ItemLine]
     result: tuple[ItemTypeStrict, int]
     flags: list[str] = field(default_factory=lambda: [])
@@ -121,8 +123,7 @@ execute
         This function export the smithed crafter recipes to the ctx variable.
         if is_external_recipe is True, the recipe will only be added to the registry and not to the function.
         """
-        ctx.meta["required_deps"].add("smithed.crafter.dev")
-        ctx.meta.setdefault("registry", {}).setdefault("recipes", []).append(self)
+        super().export(ctx)
         if is_external_recipe:
             return
         air = lambda i: Compound({"id": String("minecraft:air"), "Slot": Byte(i)})
@@ -209,8 +210,8 @@ class ShapelessRecipe:
         else:
             raise ValueError("Invalid number of lines")
         ShapedRecipe(
-            real_lines,
-            self.result
+            items=real_lines,
+            result=self.result
         ).export(ctx, is_external_recipe=True)
 
         

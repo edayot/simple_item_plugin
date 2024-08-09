@@ -1,7 +1,7 @@
 import random
 from beet import Context, Language, Generator
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
-from typing import Union, Optional, Self, Iterable
+from typing import Union, Optional, Self, Iterable, Generic, TypeVar
 from pydantic import BaseModel
 
 
@@ -33,7 +33,10 @@ class SimpleItemPluginOptions(BaseModel):
     render_path_for_pack_png: Optional[str] = None
 
 
-class Registry:
+
+
+
+class Registry(BaseModel):
     id: str
     def export(self, ctx: Union[Context, Generator]) -> Self:
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
@@ -47,7 +50,7 @@ class Registry:
         return real_ctx.meta["registry"][cls.__name__][id]
     
     @classmethod
-    def items(cls, ctx: Union[Context, Generator]) -> Iterable[tuple[str, Self]]:
+    def iter_items(cls, ctx: Union[Context, Generator]) -> Iterable[tuple[str, Self]]:
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
         return real_ctx.meta["registry"][cls.__name__].items()
         

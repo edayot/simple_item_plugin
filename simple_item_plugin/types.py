@@ -6,6 +6,8 @@ class _NAMESPACE:
         if self.id is None:
             raise ValueError("Namespace not set")
         return self.id
+    def __repr__(self) -> str:
+        return self.__str__()
     def set(self, id: str):
         self.id = id
 NAMESPACE = _NAMESPACE()
@@ -16,6 +18,8 @@ class _AUTHOR:
         if self.name is None:
             raise ValueError("Author not set")
         return self.name
+    def __repr__(self) -> str:
+        return self.__str__()
     def set(self, name: str):
         self.name = name
 AUTHOR = _AUTHOR()

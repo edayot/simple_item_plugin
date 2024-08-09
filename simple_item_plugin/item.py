@@ -23,17 +23,17 @@ else:
     Mineral = Any
 
 
-class ItemGroup(BaseModel, Registry):
+class ItemGroup(Registry):
     id: str
     name: TranslatedString
     item_icon: Optional["Item"] = None
-    items: list["Item"] = field(default_factory=list)
+    items_list: list["Item"] = field(default_factory=list)
 
     def __hash__(self) -> int:
         return hash(self.id)
     
     def add_item(self, item: "Item") -> Self:
-        self.items.append(item)
+        self.items_list.append(item)
         return self
 
 
@@ -74,7 +74,7 @@ class MergeOverridesPolicy(Enum):
     replace_from_layer6 = "layer6"
 
 
-class Item(BaseModel, Registry):
+class Item(Registry):
     id: str
     # the translation key, the
     item_name: TextComponent_base | TranslatedString
