@@ -2,9 +2,9 @@ from dataclasses import dataclass, field
 from simple_item_plugin.types import TextComponent, TextComponent_base, NAMESPACE, TranslatedString, Lang
 from beet import Context, FunctionTag, Function, LootTable, Model, Texture, ResourcePack, Generator
 from PIL import Image
-from typing import Any, Optional, TYPE_CHECKING, Union
+from typing import Any, Optional, TYPE_CHECKING, Union, Self
 from typing_extensions import TypedDict, NotRequired, Literal, Optional
-from simple_item_plugin.utils import export_translated_string, SimpleItemPluginOptions
+from simple_item_plugin.utils import export_translated_string, SimpleItemPluginOptions, Registry
 from beet.contrib.vanilla import Vanilla
 
 from nbtlib.tag import Compound, String, Byte
@@ -21,6 +21,20 @@ if TYPE_CHECKING:
     from simple_item_plugin.mineral import Mineral
 else:
     Mineral = Any
+
+
+class ItemGroup(BaseModel, Registry):
+    id: str
+    name: TranslatedString
+    item_icon: Optional["Item"] = None
+    items: list["Item"] = field(default_factory=list)
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+    
+    def add_item(self, item: "Item") -> Self:
+        self.items.append(item)
+        return self
 
 
 class WorldGenerationParams(BaseModel):
@@ -60,7 +74,7 @@ class MergeOverridesPolicy(Enum):
     replace_from_layer6 = "layer6"
 
 
-class Item(BaseModel):
+class Item(BaseModel, Registry):
     id: str
     # the translation key, the
     item_name: TextComponent_base | TranslatedString
@@ -561,18 +575,10 @@ kill @s
         model.data["overrides"].extend(new_overrides)
         rp.models[key] = model
         
-    def export(self, ctx: Union[Context, Generator]):
+    def export(self, ctx: Union[Context, Generator]) -> Self:
         self.create_loot_table(ctx)
         self.create_translation(ctx)
         self.create_custom_block(ctx)
         self.create_assets(ctx)
 
-        # add the item to the registry
-        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        assert self.id not in real_ctx.meta.setdefault("registry", {}).setdefault("items", {})
-        real_ctx.meta["registry"]["items"][self.id] = self
-        return self
-
-    @classmethod
-    def get_from_id(cls, ctx: Context, id: str) -> Optional["Item"]:
-        return ctx.meta.get("registry", {}).get("items", {}).get(id, None)
+        return super().export(ctx)

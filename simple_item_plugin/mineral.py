@@ -5,7 +5,7 @@ from typing import Any, Literal, get_args, Optional
 from typing_extensions import TypedDict, NotRequired
 from simple_item_plugin.utils import export_translated_string
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
-from simple_item_plugin.item import Item, BlockProperties, MergeOverridesPolicy
+from simple_item_plugin.item import Item, BlockProperties, MergeOverridesPolicy, ItemGroup
 from simple_item_plugin.crafting import ShapedRecipe, ShapelessRecipe, NBTSmelting, VanillaItem, SimpledrawerMaterial
 
 from PIL import Image
@@ -290,6 +290,8 @@ class Mineral:
 
     armor_additional_attributes: dict[str, AttributeModifier] = field(default_factory=lambda: {})
 
+    item_group : Optional[ItemGroup] = None
+
     def export(self, ctx: Context):
         export_translated_string(ctx, self.name)
         self.export_armor(ctx)
@@ -350,6 +352,10 @@ class Mineral:
 
 
     def export_subitem(self, ctx: Context):
+        self.item_group = ItemGroup(
+            id=f"{self.id}_group",
+            name=self.name,
+        )
         for item, item_args in self.overrides.items():
             item_args["translation"] = get_default_translated_string(item)
             item_args["type"] = item
@@ -366,7 +372,7 @@ class Mineral:
             else:
                 raise ValueError("Invalid item type")
             subitem.export(ctx)
-            Item(
+            new_item = Item(
                 id=f"{self.id}_{item}",
                 item_name=subitem.get_item_name(self.name),
                 components_extra=subitem.get_components(ctx),
@@ -376,11 +382,19 @@ class Mineral:
                 is_armor=isinstance(subitem, SubItemArmor),
                 merge_overrides_policy=subitem.merge_overrides_policy,
                 ).export(ctx)
+            self.item_group.add_item(new_item)
+        for item_part in ["ingot", "raw_ore", "raw_ore_block", "block"]:
+            if item:=self.get_item(ctx, item_part):
+                self.item_group.item_icon = item
+                break
+        if not self.item_group.item_icon:
+            raise ValueError("No item icon found")
+        self.item_group.export(ctx)
         self.generate_crafting_recipes(ctx)
         return self
 
     def get_item(self, ctx: Context, id: str) -> Item:
-        item = Item.get_from_id(ctx, f"{self.id}_{id}")
+        item = Item.get(ctx, f"{self.id}_{id}")
         if item is None:
             raise ValueError(f"Item {id} not found")
         return item
