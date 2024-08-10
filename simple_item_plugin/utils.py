@@ -74,13 +74,21 @@ class Registry(BaseModel):
         
 
 
-class ItemProtocol():
+class ItemProtocol(Protocol):
     id: str
-    model_path: str
-    minimal_representation: dict[str, Any]
-    guide_description: Optional[TranslatedString]
+    page_index: Optional[int] = None
+    char_index: Optional[int] = None
 
-    def to_nbt(self) -> Compound: raise NotImplementedError()
+    @property
+    def guide_description(self) -> Optional[TranslatedString]: ...
+
+    @property
+    def minimal_representation(self) -> dict[str, Any]: raise NotImplementedError()
+
+    @property
+    def model_path(self) -> str: raise NotImplementedError()
+
+    def to_nbt(self, i: int) -> Compound: raise NotImplementedError()
 
     def result_command(self, count: int, type : str = "block", slot : int = 16) -> str: raise NotImplementedError()
 

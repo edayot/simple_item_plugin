@@ -1,9 +1,9 @@
 from simple_item_plugin.item import Item
-from simple_item_plugin.crafting import VanillaItem, ExternalItem, ShapedRecipe
+from simple_item_plugin.crafting import VanillaItem, ShapedRecipe
 from beet import Context, Texture, Font, ItemModifier, LootTable, Generator, configurable
 from model_resolver import beet_default as model_resolver
 from PIL import Image, ImageDraw, ImageFont
-from simple_item_plugin.utils import NAMESPACE, Lang, SimpleItemPluginOptions, export_translated_string
+from simple_item_plugin.utils import NAMESPACE, Lang, SimpleItemPluginOptions, export_translated_string, ItemProtocol
 import json
 import pathlib
 from dataclasses import dataclass
@@ -22,7 +22,7 @@ def batched(iterable: Iterable[T], n: int) -> Iterable[tuple[T, ...]]:
 
 @dataclass
 class GuideItem:
-    item : Item | VanillaItem | ExternalItem
+    item : ItemProtocol
     char_index : int = 0
     page_index : int = -1
 

@@ -11,7 +11,7 @@ from typing import Any, Literal, Union, Tuple, Optional, Generator, Callable
 from beet import Context, Function, FunctionTag, Recipe
 from simple_item_plugin.item import Item
 from simple_item_plugin.types import NAMESPACE, TranslatedString
-from simple_item_plugin.utils import Registry
+from simple_item_plugin.utils import Registry, ItemProtocol
 import json
 import random
 
@@ -20,6 +20,8 @@ import random
 @dataclass
 class VanillaItem:
     id: str
+    page_index: Optional[int] = None
+    char_index: Optional[int] = None
     def __hash__(self) -> int:
         return hash(self.id)
 
@@ -54,6 +56,8 @@ class ExternalItem:
     model_path: str
     minimal_representation: dict[str, Any]
     guide_description: Optional[TranslatedString] = None
+    page_index: Optional[int] = None
+    char_index: Optional[int] = None
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -110,14 +114,13 @@ class ExternalItem:
             raise ValueError(f"Invalid type {type}")
     
 
-ItemTypeStrict = Union[Item, VanillaItem, ExternalItem]
-ItemType = Union[ItemTypeStrict, None]
+ItemType = Union[ItemProtocol, None]
 ItemLine = Tuple[ItemType, ItemType, ItemType]
 
 class ShapedRecipe(Registry):
     id: str = field(default_factory=lambda: str(hash(random.random())))
     items: Tuple[ItemLine, ItemLine, ItemLine]
-    result: tuple[ItemTypeStrict, int]
+    result: tuple[ItemProtocol, int]
     flags: list[str] = field(default_factory=lambda: [])
 
     def get_command(self, if_data_storage: str):
@@ -190,19 +193,19 @@ execute
 
 @dataclass
 class ShapelessRecipe:
-    items: list[tuple[ItemTypeStrict, int]]
-    result: tuple[ItemTypeStrict, int]
+    items: list[tuple[ItemProtocol, int]]
+    result: tuple[ItemProtocol, int]
 
     @property
     def total_count(self):
         return sum([x[1] for x in self.items])
     
-    def items_one_by_one(self) -> Generator[ItemTypeStrict, None, None]:
+    def items_one_by_one(self) -> Generator[ItemProtocol, None, None]:
         for item, count in self.items:
             for _ in range(count):
                 yield item
     def items_three_by_three(self) -> Generator[ItemLine, None, None]:
-        temp : list[ItemTypeStrict] = []
+        temp : list[ItemProtocol] = []
         for i, item in enumerate(self.items_one_by_one()):
             temp.append(item)
             if len(temp) == 3:

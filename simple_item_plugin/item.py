@@ -4,7 +4,7 @@ from beet import Context, FunctionTag, Function, LootTable, Model, Texture, Reso
 from PIL import Image
 from typing import Any, Optional, TYPE_CHECKING, Union, Self
 from typing_extensions import TypedDict, NotRequired, Literal, Optional
-from simple_item_plugin.utils import export_translated_string, SimpleItemPluginOptions, Registry
+from simple_item_plugin.utils import export_translated_string, SimpleItemPluginOptions, Registry, ItemProtocol
 from beet.contrib.vanilla import Vanilla
 
 from nbtlib.tag import Compound, String, Byte
@@ -26,13 +26,13 @@ else:
 class ItemGroup(Registry):
     id: str
     name: TranslatedString
-    item_icon: Optional["Item"] = None
-    items_list: list["Item"] = field(default_factory=list)
+    item_icon: Optional[ItemProtocol] = None
+    items_list: list[ItemProtocol] = field(default_factory=list)
 
     def __hash__(self) -> int:
-        return hash(self.id)
+        return hash(f"{NAMESPACE}:self.id")
     
-    def add_item(self, ctx: Context, item: "Item") -> Self:
+    def add_item(self, ctx: Context, item: ItemProtocol) -> Self:
         # assert that the item is not already in an item group
         for item_group in ItemGroup.iter_values(ctx):
             if item_group == self:
@@ -44,6 +44,11 @@ class ItemGroup(Registry):
                 return self
         self.items_list.append(item)
         return self
+    
+    def export(self, ctx: Context) -> Self:
+        export_translated_string(ctx, self.name)
+        return super().export(ctx)
+        
 
 
 class WorldGenerationParams(BaseModel):
@@ -85,6 +90,8 @@ class MergeOverridesPolicy(Enum):
 
 class Item(Registry):
     id: str
+    page_index: Optional[int] = None
+    char_index: Optional[int] = None
     # the translation key, the
     item_name: TextComponent_base | TranslatedString
     lore: list[TranslatedString] = field(default_factory=list)
@@ -137,7 +144,7 @@ class Item(Registry):
         }
     
     def __hash__(self):
-        return hash(self.id)
+        return hash(f"{NAMESPACE}:self.id")
     
 
     def result_command(self, count: int, type : str = "block", slot : int = 16) -> str:
