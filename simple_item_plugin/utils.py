@@ -1,8 +1,9 @@
 import random
 from beet import Context, Language, Generator
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
-from typing import Union, Optional, Self, Iterable
+from typing import Union, Optional, Self, Iterable, Protocol, Any
 from pydantic import BaseModel
+from nbtlib import Compound
 
 
 def generate_uuid() -> list[int]:
@@ -29,6 +30,7 @@ def export_translated_string(ctx: Union[Context, Generator], translation: Transl
 class SimpleItemPluginOptions(BaseModel):
     custom_model_data: int
     generate_guide: bool = True
+    disable_guide_cache: bool = False
     add_give_all_function: bool = True
     render_path_for_pack_png: Optional[str] = None
     license_path: Optional[str] = None
@@ -70,5 +72,16 @@ class Registry(BaseModel):
         real_ctx.meta.setdefault("registry", {}).setdefault(cls.__name__, {})
         return real_ctx.meta["registry"][cls.__name__].keys()
         
+
+
+class ItemProtocol():
+    id: str
+    model_path: str
+    minimal_representation: dict[str, Any]
+    guide_description: Optional[TranslatedString]
+
+    def to_nbt(self) -> Compound: raise NotImplementedError()
+
+    def result_command(self, count: int, type : str = "block", slot : int = 16) -> str: raise NotImplementedError()
 
         
