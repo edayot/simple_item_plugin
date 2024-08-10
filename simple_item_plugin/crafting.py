@@ -24,7 +24,7 @@ class VanillaItem:
         return hash(self.id)
 
 
-    def to_nbt(self, i: int):
+    def to_nbt(self, i: int) -> Compound:
         return Compound({"id": String(self.id), "Slot": Byte(i)})
 
     def result_command(self, count: int, type : str = "block", slot : int = 16) -> str:
@@ -78,10 +78,34 @@ class ExternalItem:
         )
     
     def result_command(self, count: int, type : str = "block", slot : int = 16) -> str:
+        loot_table_path = self.loot_table_path
+        if count > 1:
+            loot_table = {
+                "pools": [
+                    {
+                        "rolls": 1,
+                        "entries": [
+                            {
+                                "type": "minecraft:loot_table",
+                                "value": loot_table_path,
+                                "functions": [
+                                    {
+                                        "function": "minecraft:set_count",
+                                        "count": count
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+            loot_table_path = json.dumps(loot_table)
+
+
         if type == "block":
-            return f"item replace block ~ ~ ~ container.{slot} with {self.id} {count} "
+            return f"loot replace block ~ ~ ~ container.{slot} loot {loot_table_path}"
         elif type == "entity":
-            return f"item replace entity @s container.{slot} with {self.id} {count} "
+            return f"loot replace entity @s container.{slot} loot {loot_table_path}"
         else:
             raise ValueError(f"Invalid type {type}")
     

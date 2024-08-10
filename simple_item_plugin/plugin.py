@@ -1,5 +1,5 @@
 
-from beet import Context, configurable, Function
+from beet import Context, configurable, Function, TextFile
 from simple_item_plugin.types import NAMESPACE, AUTHOR
 from simple_item_plugin.utils import export_translated_string, Lang, SimpleItemPluginOptions
 from simple_item_plugin.guide import guide
@@ -8,6 +8,8 @@ from simple_item_plugin.item import Item
 from mecha import beet_default as mecha
 from weld_deps.main import DepsConfig as WeldDepsConfig
 import json
+import pathlib
+
 
 
 @configurable("simple_item_plugin", validator=SimpleItemPluginOptions)
@@ -25,6 +27,12 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
     ])
     export_translated_string(ctx, (f"{NAMESPACE}.name", {Lang.en_us: project_name, Lang.fr_fr: project_name}))
     ctx.meta.setdefault("required_deps", set())
+    if opts.license_path:
+        path = pathlib.Path(opts.license_path)
+        ctx.data.extra[path.name] = TextFile(open(path, "r").read())
+    if opts.readme_path:
+        path = pathlib.Path(opts.readme_path)
+        ctx.data.extra[path.name] = TextFile(open(path, "r").read())
     yield
     ctx.require(guide)
     if opts.add_give_all_function:

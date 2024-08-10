@@ -31,6 +31,8 @@ class SimpleItemPluginOptions(BaseModel):
     generate_guide: bool = True
     add_give_all_function: bool = True
     render_path_for_pack_png: Optional[str] = None
+    license_path: Optional[str] = None
+    readme_path: Optional[str] = None
 
 
 
