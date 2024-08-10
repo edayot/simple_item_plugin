@@ -1,7 +1,8 @@
 import random
 from beet import Context, Language, Generator
+from pydantic._internal._generics import PydanticGenericMetadata
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
-from typing import Union, Optional, Self, Iterable, Protocol, Any
+from typing import Union, Optional, Self, Iterable, Protocol, Any, runtime_checkable
 from pydantic import BaseModel
 from nbtlib import Compound
 
@@ -41,10 +42,17 @@ class SimpleItemPluginOptions(BaseModel):
 
 
 class Registry(BaseModel):
+    class Config: 
+        arbitrary_types_allowed = True
+        protected_namespaces = ()
     id: str
+    __soft_new__ = False
     def export(self, ctx: Union[Context, Generator]) -> Self:
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        assert self.id not in real_ctx.meta.setdefault("registry", {}).setdefault(self.__class__.__name__, {}), f"Registry {self.id} already exists"
+        real_ctx.meta.setdefault("registry", {}).setdefault(self.__class__.__name__, {})
+        if self.__soft_new__ and self.id in real_ctx.meta["registry"][self.__class__.__name__]:
+            return real_ctx.meta["registry"][self.__class__.__name__][self.id]
+        assert self.id not in real_ctx.meta["registry"][self.__class__.__name__], f"Registry {self.id} already exists"
         real_ctx.meta["registry"][self.__class__.__name__][self.id] = self
         return self
     
@@ -74,6 +82,7 @@ class Registry(BaseModel):
         
 
 
+@runtime_checkable
 class ItemProtocol(Protocol):
     id: str
     page_index: Optional[int] = None

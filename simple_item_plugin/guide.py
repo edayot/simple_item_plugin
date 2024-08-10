@@ -32,7 +32,7 @@ class GuideItem:
 
 def get_item_list(ctx: Context) -> dict[str, GuideItem]:
     items = dict()
-    items["minecraft:air"] = GuideItem(VanillaItem("minecraft:air"))
+    items["minecraft:air"] = GuideItem(VanillaItem(id="minecraft:air").export(ctx))
     for recipe in ShapedRecipe.iter_values(ctx):
         recipe : ShapedRecipe
         for row in recipe.items:
@@ -110,7 +110,7 @@ def generate_guide(ctx: Context, draft: Generator):
     guide = Item.get(ctx, "guide")
     if not guide:
         raise ValueError("The guide item is not present in the registry")
-    air = VanillaItem("minecraft:air")
+    air = VanillaItem(id="minecraft:air").export(ctx)
     # Render the registry
     all_items= get_item_list(ctx)
     ctx.meta["model_resolver"]["filter"] = [i.item.model_path for i in all_items.values()]

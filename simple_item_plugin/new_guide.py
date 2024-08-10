@@ -20,7 +20,7 @@ from simple_item_plugin.utils import (
 )
 import json
 import pathlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Iterable, TypeVar, Any, Optional, Literal
 from itertools import islice
 from pydantic import BaseModel
@@ -38,11 +38,11 @@ def batched(iterable: Iterable[T], n: int) -> Iterable[tuple[T, ...]]:
 
 
 @configurable("simple_item_plugin", validator=SimpleItemPluginOptions)
-def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
+def guide(ctx: Context, opts: SimpleItemPluginOptions):
     if not opts.generate_guide:
         return
     with ctx.generate.draft() as draft:
-        if not opts.disable_guide_cache:
+        if not opts.disable_guide_cache and False:
             draft.cache("guide", "guide")
         Guide(ctx, draft, opts).gen()
 
@@ -82,8 +82,7 @@ class Guide:
 
     char_index: int = 0x0030
     char_offset: int = 0x0004
-    item_to_char: dict[ItemProtocol, int] = {}
-    count_to_char: dict[int, int] = {}
+    count_to_char: dict[int, int] = field(default_factory=dict)
 
     @property
     def page_font(self) -> str:
@@ -91,8 +90,9 @@ class Guide:
 
     def get_new_char(self, offset: Optional[int] = None) -> int:
         offset = offset or self.char_offset
+        res = self.char_index
         self.char_index += offset
-        return self.char_index
+        return res
 
     def get_model_list(self) -> Iterable[str]:
         for recipe in ShapedRecipe.iter_values(self.ctx):
@@ -108,6 +108,7 @@ class Guide:
         return f"{NAMESPACE}:render/{model_path.replace(':', '/')}"
 
     def create_font(self):
+        self.add_big_and_medium_font()
         font_path = f"{NAMESPACE}:pages"
         release = "_release"
         if False:
@@ -210,7 +211,8 @@ class Guide:
         part: Literal["up", "down"] = "up",
         is_result: bool = False,
     ) -> dict[str, Any]:
-        char_item = f"\\u{self.item_to_char[item]+row:04x}".encode().decode("unicode_escape")
+        assert item.char_index
+        char_item = f"\\u{item.char_index+row:04x}".encode().decode("unicode_escape")
         char_void = "\uef01"
         if item.minimal_representation.get("id") == "minecraft:air":
             return {"text": char_void, "font": self.page_font, "color": "white"}
@@ -247,11 +249,13 @@ class Guide:
             }
         return res
     
-    def get_item_group_json(self, group: ItemGroup):
-        assert group.item_icon
-        char_item = f"\\u{self.item_to_char[group.item_icon]+0:04x}".encode().decode("unicode_escape")
+    def get_item_group_json(self, group: ItemGroup, part: Literal["up", "down"] = "up") -> dict[str, Any]:
+        assert group.item_icon and group.page_index and group.item_icon.char_index
+        char_item = f"\\u{group.item_icon.char_index+0:04x}".encode().decode("unicode_escape")
         char_space = "\uef03"
         char_item = f"{char_space}{char_item}{char_space}"
+        if part == "down":
+            char_item = "\uef01"
         return {
             "text": char_item,
             "font": self.page_font,
@@ -260,13 +264,66 @@ class Guide:
                 "action": "show_text",
                 "contents": {"translate": group.name[0]},
             },
+            "clickEvent": {
+                "action": "change_page",
+                "value": f"{group.page_index}",
+            },
         }
+    
+    def add_big_and_medium_font(self):
+        big_font_path = pathlib.Path(__file__).parent / "assets" / "guide" / "font" / "big.json"
+        big_font_namespace = f"{NAMESPACE}:big_font"
+        medium_font_path = pathlib.Path(__file__).parent / "assets" / "guide" / "font" / "medium.json"
+        medium_font_namespace = f"{NAMESPACE}:medium_font"
+        self.draft.assets.fonts[big_font_namespace] = Font(source_path=big_font_path)
+        self.draft.assets.fonts[medium_font_namespace] = Font(source_path=medium_font_path)
+
+    def create_pages(self) -> Iterable[str]:
+        first_page : list[str | dict[str, Any]] = [""]
+        first_page.append({
+            "translate": f"{NAMESPACE}.name",
+            "font": f"{NAMESPACE}:big_font",
+        })
+        first_page.append("\n\n")
+        first_page.append({
+            "translate": f"{NAMESPACE}.guide.first_page",
+        })
+        first_page.append("\n")
+        yield json.dumps(first_page) 
+        max_group_lines_per_page = 6
+        max_group_per_line = 6
+        n = 1
+        nb_item_groups = len(list(ItemGroup.iter_values(self.ctx)))
+        nb_categories_pages = nb_item_groups // (max_group_lines_per_page * max_group_per_line) + 1
+        categories = (f"{NAMESPACE}.guide.categories", {
+            Lang.en_us: "Categories",
+            Lang.fr_fr: "Catégories",
+        })
+        export_translated_string(self.draft, categories)
+        for groups_in_page in batched(ItemGroup.iter_values(self.ctx), max_group_lines_per_page * max_group_per_line):
+            page : list[str | dict[str, Any]] = [""]
+            page.append({
+                "translate": categories[0],
+                "font": f"{NAMESPACE}:medium_font",
+            })
+            page.append("\n\n")
+            for group_line in batched(groups_in_page, max_group_per_line):
+                for item_group in group_line:
+                    item_group.page_index = 1 + nb_categories_pages + n
+                    n += 1
+                    page.append(self.get_item_group_json(item_group))
+                page.append("\n")
+                for item_group in group_line:
+                    page.append(self.get_item_group_json(item_group, part="down"))
+                page.append("\n")
+            yield json.dumps(page)
+        
         
     def gen(self):
         guide = Item.get(self.ctx, "guide")
         if not guide:
             raise Exception("Guide item not found")
-        VanillaItem("minecraft:air")
+        VanillaItem(id="minecraft:air").export(self.ctx)
         self.ctx.meta["model_resolver"]["filter"] = set(self.get_model_list())
         self.ctx.require(model_resolver)
         for texture_path in self.ctx.assets.textures.match(f"{NAMESPACE}:render/**"):
@@ -275,3 +332,6 @@ class Guide:
             img.putpixel((img.width - 1, img.height - 1), (137, 137, 137, 255))
             self.draft.assets.textures[texture_path] = Texture(img)
         self.create_font()
+        self.add_items_to_font(*Item.iter_values(self.ctx))
+        for x in self.create_pages():
+            print(x)

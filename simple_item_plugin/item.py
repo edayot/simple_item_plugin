@@ -28,6 +28,7 @@ class ItemGroup(Registry):
     name: TranslatedString
     item_icon: Optional[ItemProtocol] = None
     items_list: list[ItemProtocol] = field(default_factory=list)
+    page_index: Optional[int] = None
 
     def __hash__(self) -> int:
         return hash(f"{NAMESPACE}:self.id")

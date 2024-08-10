@@ -491,8 +491,8 @@ class Mineral(Registry):
             types=["furnace", "blast_furnace"],
         ).export(ctx)
 
-        stick = VanillaItem("minecraft:stick")
-        stick = VanillaItem("minecraft:stick")
+        stick = VanillaItem(id="minecraft:stick").export(ctx)
+        stick = VanillaItem(id="minecraft:stick").export(ctx)
 
         if pickaxe := self.get_item(ctx, "pickaxe"):
             ShapedRecipe(

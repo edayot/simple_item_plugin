@@ -17,11 +17,12 @@ import random
 
 
 
-@dataclass
-class VanillaItem:
+class VanillaItem(Registry):
     id: str
     page_index: Optional[int] = None
     char_index: Optional[int] = None
+
+    __soft_new__ = True
     def __hash__(self) -> int:
         return hash(self.id)
 
@@ -49,8 +50,8 @@ class VanillaItem:
     def guide_description(self) -> Optional[TranslatedString]:
         return None
 
-@dataclass
-class ExternalItem:
+
+class ExternalItem(Registry):
     id: str
     loot_table_path: str
     model_path: str
