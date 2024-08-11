@@ -306,7 +306,7 @@ class Guide:
         self.draft.assets.fonts[big_font_namespace] = Font(source_path=big_font_path)
         self.draft.assets.fonts[medium_font_namespace] = Font(source_path=medium_font_path)
 
-    def create_pages(self) -> Iterable[str]:
+    def create_start_pages(self) -> Iterable[str]:
         first_page : list[str | dict[str, Any]] = [""]
         first_page.append({
             "translate": f"{NAMESPACE}.name",
@@ -317,6 +317,20 @@ class Guide:
             "translate": f"{NAMESPACE}.guide.first_page",
         })
         first_page.append("\n")
+        
+        if self.opts.items_on_first_page:
+            n = 1
+            group = ItemGroup.get(self.ctx, "special:all_items")
+            for item in group.items_list:
+                n+=1
+                item.page_index = n
+                first_page.append(self.get_item_json(item))
+            first_page.append("\n")
+            for item in group.items_list:
+                first_page.append(self.get_item_json(item, part="down"))
+            first_page.append("\n")
+            yield json.dumps(first_page)
+            return
         yield json.dumps(first_page) 
         max_group_lines_per_page = 6
         max_group_per_line = 6
@@ -490,17 +504,21 @@ class Guide:
         self.add_items_to_font(*ExternalItem.iter_values(self.ctx))
         self.add_items_to_font(*[i for i in VanillaItem.iter_values(self.ctx) if i.id != "minecraft:air"])
         pages = []
-        pages.extend(self.create_pages())
+        pages.extend(self.create_start_pages())
         self.page_count = len(pages)
         groups = list(ItemGroup.iter_values(self.ctx))
         groups.sort(key=lambda x: x.page_index or 0)
         page_count_after = self.page_count + sum(len(group.items_list) // self.max_item_per_page + 1 for group in groups)
+        if self.opts.items_on_first_page:
+            page_count_after -= 1
         for group in groups:
             for item in group.items_list:
                 item.page_index = page_count_after + 1
                 page_count_after += self.get_item_page_length(item)
         for group in groups:
             self.page_count += 1
+            if group.page_index == -1:
+                continue
             assert group.page_index == self.page_count, f"{group.page_index} != {self.page_count}"
             group_pages = list(self.create_group_pages(group))
 

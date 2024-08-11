@@ -36,6 +36,7 @@ class SimpleItemPluginOptions(BaseModel):
     render_path_for_pack_png: Optional[str] = None
     license_path: Optional[str] = None
     readme_path: Optional[str] = None
+    items_on_first_page: bool = False
 
 
 
