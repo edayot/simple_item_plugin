@@ -293,10 +293,10 @@ execute
         ctx.data.functions[function_path].append(command)
 
 
-@dataclass
-class NBTSmelting:
-    item: Item | VanillaItem
-    result: tuple[Item | VanillaItem, int]
+class NBTSmelting(Registry):
+    id: str = field(default_factory=lambda: str(hash(random.random())))
+    item: ItemProtocol
+    result: tuple[ItemProtocol, int]
     types: list[Literal["furnace", "blast_furnace", "smoker"]] = field(
         default_factory=lambda: ["furnace"]
     )

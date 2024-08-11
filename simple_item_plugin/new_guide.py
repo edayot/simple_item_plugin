@@ -80,7 +80,7 @@ class Guide:
     draft: Generator
     opts: SimpleItemPluginOptions
 
-    char_index: int = 0x00ff
+    char_index: int = 0xe000
     char_offset: int = 0x0004
     count_to_char: dict[int, int] = field(default_factory=dict)
     page_count: int = 1
@@ -104,6 +104,7 @@ class Guide:
         offset = offset or self.char_offset
         res = self.char_index
         self.char_index += offset
+        assert self.char_index < 0xf8ff, "The guide generator has reached the maximum number of characters"
         return res
 
     def get_model_list(self) -> Iterable[str]:

@@ -359,6 +359,13 @@ class Mineral(Registry):
             item_args["translation"] = get_default_translated_string(item)
             item_args["type"] = item
             item_args["mineral"] = self
+            is_cookable = False
+            if item in ["raw_ore", "ore", "deepslate_ore", "dust"]:
+                is_cookable = True
+            if "is_cookable" in item_args:
+                is_cookable = item_args["is_cookable"]
+                del item_args["is_cookable"]
+            
             if item in ToolTypeList:
                 subitem = SubItemTool(**item_args)
             elif item in ArmorTypeList:
@@ -377,7 +384,7 @@ class Mineral(Registry):
                 components_extra=subitem.get_components(ctx),
                 base_item=subitem.get_base_item(),
                 block_properties=subitem.block_properties,
-                is_cookable=subitem.is_cookable,
+                is_cookable=is_cookable,
                 is_armor=isinstance(subitem, SubItemArmor),
                 merge_overrides_policy=subitem.merge_overrides_policy,
                 ).export(ctx)
