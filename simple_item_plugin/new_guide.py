@@ -80,7 +80,7 @@ class Guide:
     draft: Generator
     opts: SimpleItemPluginOptions
 
-    char_index: int = 0x0030
+    char_index: int = 0x00ff
     char_offset: int = 0x0004
     count_to_char: dict[int, int] = field(default_factory=dict)
     page_count: int = 1
@@ -194,12 +194,15 @@ class Guide:
                     "chars": [char_index],
                 }
             )
+            self.count_to_char[count] = char_count
 
     def add_items_to_font(self, *items: ItemProtocol):
         for item in items:
             if item.char_index:
                 continue
             render_path = self.model_path_to_render_path(item.model_path)
+            if not render_path in self.draft.assets.textures:
+                raise Exception(f"Texture {render_path} not found")
             item.char_index = self.get_new_char()
             for i in range(3):
                 char_item = f"\\u{item.char_index+i:04x}".encode().decode(
@@ -217,12 +220,19 @@ class Guide:
 
     def get_item_json(
         self,
-        item: ItemProtocol,
+        item: Optional[ItemProtocol] = None,
         count: int = 1,
         row: Literal[0, 1, 2] = 0,
         part: Literal["up", "down"] = "up",
         is_result: bool = False,
     ) -> dict[str, Any]:
+        if not item:
+            return {
+                "text": "\uef01",
+                "font": self.page_font,
+                "color": "white",
+            }
+
         assert item.char_index
         char_item = f"\\u{item.char_index+row:04x}".encode().decode("unicode_escape")
         char_void = "\uef01"
@@ -337,6 +347,34 @@ class Guide:
                 n += 1
         return max(1, n)
     
+    def create_craft_grid(self, recipe: ShapedRecipe) -> Iterable[str | dict[str, Any]]:
+        yield {
+            "text":f"\n\uef13 \uef14\n",
+            "font":self.page_font,
+            "color":"white"
+        }
+        yield "\n"
+
+        for i in range(3):
+            for part in ("up", "down"):
+                yield {"text":"\uef00\uef00","font":self.page_font,"color":"white"}
+                for j in range(3):
+                    item = recipe.items[i][j]
+                    yield self.get_item_json(item, row=i, part=part)
+                # result generation
+                if (i == 0 and part == "down") or (i == 1) or (i == 2 and part == "up"):
+                    yield {"text":"\uef00\uef00\uef00\uef00","font":self.page_font,"color":"white"}
+                # void generation
+                if (i == 0 and part == "down") or (i == 2 and part == "up"):
+                    yield self.get_item_json(recipe.result[0], is_result=True, part="down")
+                # render generation
+                if (i == 1):
+                    yield self.get_item_json(recipe.result[0], is_result=True, part=part, count=recipe.result[1])
+                yield "\n"
+        yield "\n"
+
+                
+    
     def create_item_page(self, item: ItemProtocol) -> Iterable[str]:
         crafts = []
         for recipe in ShapedRecipe.iter_values(self.ctx):
@@ -346,12 +384,25 @@ class Guide:
         item_name = json.loads(item_name)
         item_name["font"] = f"{NAMESPACE}:medium_font"
         item_name["color"] = "black"
+
+        description = item.guide_description
+        description = description if description else ("",{})
+        export_translated_string(self.draft, description)
+
         n=0
         for recipe in crafts:
             page : list[str | dict[str, Any]] = [""]
             page.append(item_name)
-            page.append("\n\n")
-            page.append(str(n+1))
+            craft = self.create_craft_grid(recipe)
+            page.extend(craft)
+            page.append({
+                "translate": description[0],
+                "color":"black",
+                "fallback": description[1].get(Lang.en_us, "")
+            })
+
+            page.append("\n")
+            n += 1
             yield json.dumps(page)
         
         if len(crafts) == 0:
@@ -373,7 +424,6 @@ class Guide:
             })
             page.append("\n\n")
             for item_line in batched(item_page, max_item_per_line):
-                print([item.id for item in item_line])
                 for item in item_line:
                     page.append(self.get_item_json(item))
                 page.append("\n")
@@ -397,13 +447,14 @@ class Guide:
             self.draft.assets.textures[texture_path] = Texture(img)
         self.create_font()
         self.add_items_to_font(*Item.iter_values(self.ctx))
+        self.add_items_to_font(*ExternalItem.iter_values(self.ctx))
+        self.add_items_to_font(*[i for i in VanillaItem.iter_values(self.ctx) if i.id != "minecraft:air"])
         pages = []
         pages.extend(self.create_pages())
         self.page_count = len(pages)
         groups = list(ItemGroup.iter_values(self.ctx))
         groups.sort(key=lambda x: x.page_index or 0)
         page_count_after = self.page_count + sum(len(group.items_list) // self.max_item_per_page + 1 for group in groups)
-        print(page_count_after)
         for group in groups:
             for item in group.items_list:
                 item.page_index = page_count_after + 1
@@ -417,7 +468,6 @@ class Guide:
             pages.extend(group_pages)
         for group in groups:
             for item in group.items_list:
-                print(item.id, item.page_index)
                 assert item.page_index
                 item_pages = list(self.create_item_page(item))
                 self.page_count += len(item_pages)
