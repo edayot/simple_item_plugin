@@ -377,7 +377,13 @@ kill @s
                     {"function": "minecraft:set_custom_data", "tag": value}
                 )
             elif key == "special:item_modifier":
-                res.append({"function": "minecraft:reference", "name": value})
+                if isinstance(value, str):
+                    res.append({"function": "minecraft:reference", "name": value})
+                elif isinstance(value, tuple):
+                    for v in value:
+                        res.append({"function": "minecraft:reference", "name": v})
+                else:
+                    raise ValueError(f"Invalid value for special:item_modifier {value}")
             else:
                 res.append(
                     {"function": "minecraft:set_components", "components": {key: value}}
