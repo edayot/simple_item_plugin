@@ -1,5 +1,5 @@
 from simple_item_plugin.item import Item, ItemGroup
-from simple_item_plugin.crafting import VanillaItem, ExternalItem, ShapedRecipe
+from simple_item_plugin.crafting import VanillaItem, ExternalItem, ShapedRecipe, NBTSmelting
 from beet import (
     Context,
     Texture,
@@ -80,6 +80,8 @@ class Guide:
     draft: Generator
     opts: SimpleItemPluginOptions
 
+    debug_mode: bool = False
+
     char_index: int = 0xe000
     char_offset: int = 0x0004
     count_to_char: dict[int, int] = field(default_factory=dict)
@@ -124,7 +126,7 @@ class Guide:
         self.add_big_and_medium_font()
         font_path = f"{NAMESPACE}:pages"
         release = "_release"
-        if False:
+        if self.debug_mode:
             release = ""
         none_2 = f"{NAMESPACE}:item/font/none_2.png"
         none_3 = f"{NAMESPACE}:item/font/none_3.png"
@@ -132,6 +134,7 @@ class Guide:
         none_5 = f"{NAMESPACE}:item/font/none_5.png"
         template_craft = f"{NAMESPACE}:item/font/template_craft.png"
         template_result = f"{NAMESPACE}:item/font/template_result.png"
+        furnace_craft = f"{NAMESPACE}:item/font/furnace_craft.png"
 
         github = f"{NAMESPACE}:item/logo/github.png"
         pmc = f"{NAMESPACE}:item/logo/pmc.png"
@@ -146,6 +149,7 @@ class Guide:
             none_4: root_path / f"none_4{release}.png",
             none_5: root_path / f"none_5{release}.png",
             template_craft: root_path / "template_craft.png",
+            furnace_craft: root_path / "furnace_craft.png",
             template_result: root_path / "template_result.png",
             github: root_path / "logo" / "github.png",
             pmc: root_path / "logo" / "pmc.png",
@@ -170,6 +174,7 @@ class Guide:
             { "type": "bitmap", "file": none_5,				"ascent": 7, "height": 8, "chars": ["\uef03"] },
             { "type": "bitmap", "file": template_craft,		"ascent": -3, "height": 68, "chars": ["\uef13"] },
             { "type": "bitmap", "file": template_result,	"ascent": -20, "height": 34, "chars": ["\uef14"] },
+            { "type": "bitmap", "file": furnace_craft,		"ascent": -4, "height": 68, "chars": ["\uef15"] },
             { "type": "bitmap", "file": github,				"ascent": 7, "height": 25, "chars": ["\uee01"] },
             { "type": "bitmap", "file": pmc,			    "ascent": 7, "height": 25, "chars": ["\uee02"] },
             { "type": "bitmap", "file": smithed,		    "ascent": 7, "height": 25, "chars": ["\uee03"] },
@@ -346,6 +351,9 @@ class Guide:
         for recipe in ShapedRecipe.iter_values(self.ctx):
             if recipe.result[0] == item:
                 n += 1
+        for recipe in NBTSmelting.iter_values(self.ctx):
+            if recipe.item == item:
+                n += 1
         return max(1, n)
     
     def create_craft_grid(self, recipe: ShapedRecipe) -> Iterable[str | dict[str, Any]]:
@@ -374,6 +382,22 @@ class Guide:
                 yield "\n"
         yield "\n"
 
+    def create_furnace_grid(self, recipe: NBTSmelting) -> Iterable[str | dict[str, Any]]:
+        yield {
+            "text":f"\n  \uef15\n",
+            "font":self.page_font,
+            "color":"white"
+        }
+        yield "\n"
+        for part in ("up", "down"):
+            yield {"text":"\uef00\uef00\uef00\uef00\uef03\uef03","font":self.page_font,"color":"white"}
+            yield self.get_item_json(recipe.item, part=part, row=1)
+            yield "\n"
+        for part in ("up", "down"):
+            yield {"text":"\uef01\uef01\uef01\uef00\uef00\uef00\uef00\uef00","font":self.page_font,"color":"white"}
+            yield self.get_item_json(recipe.result[0], is_result=True, part=part, count=recipe.result[1], row=2)
+            yield "\n"
+
                 
     
     def create_item_page(self, item: ItemProtocol) -> Iterable[str]:
@@ -381,6 +405,10 @@ class Guide:
         for recipe in ShapedRecipe.iter_values(self.ctx):
             if recipe.result[0] == item:
                 crafts.append(recipe)
+        furnaces = []
+        for recipe in NBTSmelting.iter_values(self.ctx):
+            if recipe.item == item:
+                furnaces.append(recipe)
         item_name = item.minimal_representation["components"]["minecraft:item_name"]
         item_name = json.loads(item_name)
         item_name["font"] = f"{NAMESPACE}:medium_font"
@@ -390,7 +418,6 @@ class Guide:
         description = description if description else ("",{})
         export_translated_string(self.draft, description)
 
-        n=0
         for recipe in crafts:
             page : list[str | dict[str, Any]] = [""]
             page.append(item_name)
@@ -403,10 +430,22 @@ class Guide:
             })
 
             page.append("\n")
-            n += 1
             yield json.dumps(page)
+        for recipe in furnaces:
+            page : list[str | dict[str, Any]] = [""]
+            page.append(item_name)
+            craft = self.create_furnace_grid(recipe)
+            page.extend(craft)
+            page.append({
+                "translate": description[0],
+                "color":"black",
+                "fallback": description[1].get(Lang.en_us, "")
+            })
+            page.append("\n")
+            yield json.dumps(page)
+
         
-        if len(crafts) == 0:
+        if len(crafts) == 0 and len(furnaces) == 0:
             page : list[str | dict[str, Any]] = [""]
             page.append(item_name)
             page.append("\n\n")

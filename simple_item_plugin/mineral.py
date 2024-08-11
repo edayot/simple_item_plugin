@@ -448,7 +448,7 @@ class Mineral(Registry):
 
             NBTSmelting(
                 item=raw_ore,
-                result=(ingot, 1),
+                result=(ingot, 2),
                 types=["furnace", "blast_furnace"],
             ).export(ctx)
 
@@ -494,7 +494,7 @@ class Mineral(Registry):
 
         NBTSmelting(
             item=dust,
-            result=(ingot, 2),
+            result=(ingot, 1),
             types=["furnace", "blast_furnace"],
         ).export(ctx)
 

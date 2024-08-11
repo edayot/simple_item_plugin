@@ -307,6 +307,7 @@ class NBTSmelting(Registry):
         """
         for type in self.types:
             self.export_type(ctx, type)
+        super().export(ctx)
 
     def type_to_crafting_type(self, type: str):
         if type == "furnace":
