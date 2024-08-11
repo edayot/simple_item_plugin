@@ -1,4 +1,4 @@
-from beet import Context
+from beet import Context, Function, FunctionTag, Generator
 from beet.contrib.find_replace import find_replace
 from beet.contrib.rename_files import rename_files
 
@@ -42,4 +42,28 @@ def beet_default(ctx: Context):
     ctx.require(generate_api)
 
     # we load this afterwards so that dynamic renames don't "touch" it
-    ctx.require("beet.contrib.lantern_load.base_data_pack")
+    with ctx.generate.draft() as draft:
+        base_data_pack(draft)
+
+
+
+def base_data_pack(draft: Generator):
+    draft.data["minecraft:load"] = FunctionTag({"values": ["#load:_private/load"]})
+    draft.data["load:_private/load"] = FunctionTag(
+        {
+            "values": [
+                "#load:_private/init",
+                {"id": "#load:pre_load", "required": False},
+                {"id": "#load:load", "required": False},
+                {"id": "#load:post_load", "required": False},
+            ]
+        }
+    )
+
+    draft.data["load:_private/init"] = FunctionTag({"values": ["load:_private/init"]})
+    draft.data["load:_private/init"] = Function(
+        [
+            "scoreboard objectives add load.status dummy",
+            "scoreboard players reset * load.status",
+        ]
+    )
