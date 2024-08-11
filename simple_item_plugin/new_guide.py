@@ -83,6 +83,18 @@ class Guide:
     char_index: int = 0x0030
     char_offset: int = 0x0004
     count_to_char: dict[int, int] = field(default_factory=dict)
+    page_count: int = 1
+
+    max_group_lines_per_page: int = 6
+    max_group_per_line: int = 6
+    max_item_per_line: int = 6
+    max_item_lines_per_page: int = 6
+    @property
+    def max_item_per_page(self) -> int:
+        return self.max_item_per_line * self.max_item_lines_per_page
+    @property
+    def max_item_per_group(self) -> int:
+        return self.max_item_per_line * self.max_group_per_line
 
     @property
     def page_font(self) -> str:
@@ -310,11 +322,63 @@ class Guide:
             for group_line in batched(groups_in_page, max_group_per_line):
                 for item_group in group_line:
                     item_group.page_index = 1 + nb_categories_pages + n
-                    n += 1
+                    n += len(item_group.items_list) // self.max_item_per_page + 1
                     page.append(self.get_item_group_json(item_group))
                 page.append("\n")
                 for item_group in group_line:
                     page.append(self.get_item_group_json(item_group, part="down"))
+                page.append("\n")
+            yield json.dumps(page)
+
+    def get_item_page_length(self, item: ItemProtocol) -> int:
+        n = 0
+        for recipe in ShapedRecipe.iter_values(self.ctx):
+            if recipe.result[0] == item:
+                n += 1
+        return max(1, n)
+    
+    def create_item_page(self, item: ItemProtocol) -> Iterable[str]:
+        crafts = []
+        for recipe in ShapedRecipe.iter_values(self.ctx):
+            if recipe.result[0] == item:
+                crafts.append(recipe)
+        item_name = item.minimal_representation["components"]["minecraft:item_name"]
+        item_name = json.loads(item_name)
+        item_name["font"] = f"{NAMESPACE}:medium_font"
+        item_name["color"] = "black"
+        n=0
+        for recipe in crafts:
+            page : list[str | dict[str, Any]] = [""]
+            page.append(item_name)
+            page.append("\n\n")
+            page.append(str(n+1))
+            yield json.dumps(page)
+        
+        if len(crafts) == 0:
+            page : list[str | dict[str, Any]] = [""]
+            page.append(item_name)
+            page.append("\n\n")
+            page.append("No recipe")
+            yield json.dumps(page)
+    
+    def create_group_pages(self, group: ItemGroup) -> Iterable[str]:
+        max_item_per_line = 6
+        max_item_lines_per_page = 6
+        max_item_per_page = max_item_per_line * max_item_lines_per_page
+        for item_page in batched(group.items_list, max_item_per_page):
+            page : list[str | dict[str, Any]] = [""]
+            page.append({
+                "translate": group.name[0],
+                "font": f"{NAMESPACE}:medium_font",
+            })
+            page.append("\n\n")
+            for item_line in batched(item_page, max_item_per_line):
+                print([item.id for item in item_line])
+                for item in item_line:
+                    page.append(self.get_item_json(item))
+                page.append("\n")
+                for item in item_line:
+                    page.append(self.get_item_json(item, part="down"))
                 page.append("\n")
             yield json.dumps(page)
         
@@ -333,5 +397,46 @@ class Guide:
             self.draft.assets.textures[texture_path] = Texture(img)
         self.create_font()
         self.add_items_to_font(*Item.iter_values(self.ctx))
-        for x in self.create_pages():
-            print(x)
+        pages = []
+        pages.extend(self.create_pages())
+        self.page_count = len(pages)
+        groups = list(ItemGroup.iter_values(self.ctx))
+        groups.sort(key=lambda x: x.page_index or 0)
+        page_count_after = self.page_count + sum(len(group.items_list) // self.max_item_per_page + 1 for group in groups)
+        print(page_count_after)
+        for group in groups:
+            for item in group.items_list:
+                item.page_index = page_count_after + 1
+                page_count_after += self.get_item_page_length(item)
+        for group in groups:
+            self.page_count += 1
+            assert group.page_index == self.page_count, f"{group.page_index} != {self.page_count}"
+            group_pages = list(self.create_group_pages(group))
+
+            self.page_count += len(group_pages) - 1
+            pages.extend(group_pages)
+        for group in groups:
+            for item in group.items_list:
+                print(item.id, item.page_index)
+                assert item.page_index
+                item_pages = list(self.create_item_page(item))
+                self.page_count += len(item_pages)
+                pages.extend(item_pages)
+        
+        create_modifier(self.draft, pages)
+
+
+
+def create_modifier(draft: Generator, pages: Iterable[str]):
+    item_modifier = ItemModifier({
+        "function": "minecraft:set_components",
+        "components": {
+            "minecraft:written_book_content": {
+                "title": "Guide",
+                "author": "AirDox_",
+                "pages": pages,
+                "resolved": True
+            }
+        }
+    })
+    draft.data.item_modifiers[f"{NAMESPACE}:impl/guide"] = item_modifier
