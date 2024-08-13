@@ -2,7 +2,7 @@
 from beet import Context, configurable, Function, TextFile
 from simple_item_plugin.types import NAMESPACE, AUTHOR
 from simple_item_plugin.utils import export_translated_string, Lang, SimpleItemPluginOptions
-from simple_item_plugin.new_guide import guide
+from simple_item_plugin.guide import guide
 from simple_item_plugin.versioning import beet_default as versioning
 from simple_item_plugin.item import Item
 from mecha import beet_default as mecha
