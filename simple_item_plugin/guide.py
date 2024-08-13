@@ -399,6 +399,7 @@ class Category:
     name: TranslatedString
     icon_char: int
     elements: list[CategoryElement]
+    page_index: Optional[int] = None
 
     @classmethod
     def from_item_group(cls, ctx: Context, item_group: ItemGroup, count_to_char: dict[int,int]) -> 'Category':
@@ -417,7 +418,7 @@ class Category:
                 "translate": self.name[0],
                 "font": f"{NAMESPACE}:medium_font",
             })
-            if len(self.elements) > 1:
+            if len(self.elements) > MAX_RENDER_PER_PAGE:
                 content.append({
                     "text": f", {i+1}",
                     "font": f"{NAMESPACE}:medium_font",
@@ -430,7 +431,10 @@ class Category:
                 for element in element_line:
                     content.append(CategoryElementRender(category_element=element, part="down"))
                 content.append("\n")
-            yield Page(ctx=ctx, content=content, page_index=ctx.meta["guide_index"]())
+            index = ctx.meta["guide_index"]()
+            if i == 0:
+                self.page_index = index
+            yield Page(ctx=ctx, content=content, page_index=index)
                 
         
     
@@ -448,7 +452,7 @@ class CategoryRender:
         return list(self.get_render())
     
     def get_render(self) -> Iterable[MinecraftTextComponentBasePlus]:
-        assert self.category.elements[0].page_index, "No pages"
+        assert self.category.page_index, "No pages"
         char_item = get_char(self.category.icon_char)
         char_space = "\uef03"
         char_item = f"{char_space}{char_item}{char_space}"
@@ -464,7 +468,7 @@ class CategoryRender:
             },
             "clickEvent": {
                 "action": "change_page",
-                "value": f"{self.category.elements[0].page_index}",
+                "value": f"{self.category.page_index}",
             },
         }
 
