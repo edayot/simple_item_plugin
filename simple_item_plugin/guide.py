@@ -106,8 +106,7 @@ class ItemRender:
     void_small = "\uef01"
     void_big = "\uef02\uef02"
     space_small = "\uef03"
-    space_big_1 = "\uef00\uef00\uef03"
-    space_big_2 = "\uef00\uef00\uef03\uef00"
+    space_big = "\uef03\uef03\uef03\uef03\uef03\uef03\uef03\uef03"
 
     @property
     def char_item(self) -> str:
@@ -115,7 +114,7 @@ class ItemRender:
         assert self.item.char_index
         char_item = get_char(self.item.char_index + self.row)
         if self.is_big:
-            return f"{self.space_big_1}{char_item}{self.space_big_2}"
+            return f"{self.space_big}{char_item}{self.space_big}"
         return f"{self.space_small}{char_item}{self.space_small}"
     
     @property
@@ -175,6 +174,40 @@ class ItemRender:
                 "value": f"{self.item.page_index}",
             }
         return res
+    
+@dataclass
+class ItemRenderWithBackground:
+    item: ItemProtocol
+    count_to_char: dict[int, int] 
+    space: str = "\uef01\uef01"
+    
+
+    def to_text_component(self) -> list[MinecraftTextComponentBasePlus]:
+        return list(self.get_render())
+    
+    def get_render(self) -> Iterable[MinecraftTextComponentBasePlus]:
+        space_1 = {
+            "text": self.space,
+            "font": f"{NAMESPACE}:pages",
+            "color": "white",
+        }
+        space_2 = {
+            "text": self.space + "\uef03",
+            "font": f"{NAMESPACE}:pages",
+            "color": "white",
+        }
+        yield space_1
+        yield {
+            "text": "\uef16\n",
+            "font": f"{NAMESPACE}:pages",
+            "color": "white",
+        }
+        yield space_2
+        yield ItemRender(item=self.item, is_big=True, part="render", count_to_char=self.count_to_char, row=2)
+        yield "\n"
+        yield space_2
+        yield ItemRender(item=self.item, is_big=True, part="count", count=1, count_to_char=self.count_to_char, row=2)
+        yield "\n\n\n"
 
 @dataclass
 class ShapedRecipeRender:
@@ -185,6 +218,7 @@ class ShapedRecipeRender:
     def page_font(self) -> str:
         return f"{NAMESPACE}:pages"
     space_before_line = "\uef00\uef00"
+    space_before_result = "\uef00\uef03\uef03\uef03\uef03\uef03\uef03\uef03\uef03"
 
     def to_text_component(self) -> MinecraftTextComponentPlus:
         return list(self.get_craft_grid())
@@ -192,12 +226,10 @@ class ShapedRecipeRender:
 
     def get_craft_grid(self) -> Iterable[MinecraftTextComponentBasePlus]:
         yield {
-            "text":f"\n\uef13 \uef14\n",
+            "text":f"\uef13 \uef14\n",
             "font":self.page_font,
             "color":"white"
         }
-        yield "\n"
-
         for i in range(3):
             assert i in (0, 1, 2)
             for partPosition in ("up", "down"):
@@ -213,7 +245,7 @@ class ShapedRecipeRender:
                     )
                 # result generation
                 if (i == 0 and partPosition == "down") or (i == 1) or (i == 2 and partPosition == "up"):
-                    yield {"text":2*self.space_before_line,"font":self.page_font,"color":"white"}
+                    yield {"text":self.space_before_result,"font":self.page_font,"color":"white"}
                 # void generation
                 if (i == 0 and partPosition == "down") or (i == 2 and partPosition == "up"):
                     result = self.recipe.result[0]
@@ -252,11 +284,10 @@ class NBTSmeltingRender:
     
     def get_furnace_grid(self) -> Iterable[MinecraftTextComponentBasePlus]:
         yield {
-            "text":f"\n  \uef15\n",
+            "text":f"  \uef15\n",
             "font":self.page_font,
             "color":"white"
         }
-        yield "\n"
         for part in ("render", "void"):
             yield {"text":self.space_before_line,"font":self.page_font,"color":"white"}
             yield ItemRender(
@@ -278,7 +309,7 @@ class NBTSmeltingRender:
                 count_to_char=self.count_to_char,
             )
             yield "\n"
-        yield "\n"
+        yield "\n\n\n"
             
     
 
@@ -321,7 +352,7 @@ class CategoryElement:
                 crafts.append(recipe)
         furnaces = []
         for recipe in NBTSmelting.iter_values(ctx):
-            if recipe.item == item:
+            if recipe.result[0] == item:
                 furnaces.append(recipe)
         item_name = item.minimal_representation["components"]["minecraft:item_name"]
         item_name = json.loads(item_name)
@@ -332,26 +363,27 @@ class CategoryElement:
         description = description if description else ("",{})
         export_translated_string(ctx, description)
         
-        for recipe in crafts:
+        content : MinecraftTextComponentPlus = [""]
+        content.append(item_name)
+        content.append("\n")
+        content.append(ItemRenderWithBackground(item=item, count_to_char=count_to_char))
+        content.append({
+            "translate": description[0],
+            "color":"black",
+            "fallback": description[1].get(Lang.en_us, "No description")
+        })
+        yield Page(ctx=ctx, content=content)
+        
+        for recipe_batch in batched(crafts, 2):
             content : MinecraftTextComponentPlus = [""]
-            content.append(item_name)
-            content.append(ShapedRecipeRender(recipe=recipe, count_to_char=count_to_char))
-            content.append({
-                "translate": description[0],
-                "color":"black",
-                "fallback": description[1].get(Lang.en_us, "")
-            })
+            for recipe in recipe_batch:
+                content.append(ShapedRecipeRender(recipe=recipe, count_to_char=count_to_char))
             content.append("\n")
             yield Page(ctx=ctx, content=content)
-        for recipe in furnaces:
+        for recipe_batch in batched(furnaces, 2):
             content : MinecraftTextComponentPlus = [""]
-            content.append(item_name)
-            content.append(NBTSmeltingRender(recipe=recipe, count_to_char=count_to_char))
-            content.append({
-                "translate": description[0],
-                "color":"black",
-                "fallback": description[1].get(Lang.en_us, "")
-            })
+            for recipe in recipe_batch:
+                content.append(NBTSmeltingRender(recipe=recipe, count_to_char=count_to_char))
             content.append("\n")
             yield Page(ctx=ctx, content=content)
 
@@ -630,6 +662,7 @@ class Guide:
             )
 
         # fmt: off
+        x=9
         self.draft.assets.fonts[self.page_font] = Font({
             "providers": [
             {
@@ -640,9 +673,10 @@ class Guide:
             { "type": "bitmap", "file": none_3,				"ascent": 7, "height": 8, "chars": ["\uef01"] },
             { "type": "bitmap", "file": none_4,				"ascent": 7, "height": 8, "chars": ["\uef02"] },
             { "type": "bitmap", "file": none_5,				"ascent": 7, "height": 8, "chars": ["\uef03"] },
-            { "type": "bitmap", "file": template_craft,		"ascent": -3, "height": 68, "chars": ["\uef13"] },
-            { "type": "bitmap", "file": template_result,	"ascent": -20, "height": 34, "chars": ["\uef14"] },
-            { "type": "bitmap", "file": furnace_craft,		"ascent": -4, "height": 68, "chars": ["\uef15"] },
+            { "type": "bitmap", "file": template_craft,		"ascent": -3+x, "height": 68, "chars": ["\uef13"] },
+            { "type": "bitmap", "file": template_result,	"ascent": -20+x, "height": 34, "chars": ["\uef14"] },
+            { "type": "bitmap", "file": furnace_craft,		"ascent": -4+x, "height": 68, "chars": ["\uef15"] },
+            { "type": "bitmap", "file": template_result,	"ascent": -3+x, "height": 34, "chars": ["\uef16"] },
             { "type": "bitmap", "file": github,				"ascent": 7, "height": 25, "chars": ["\uee01"] },
             { "type": "bitmap", "file": pmc,			    "ascent": 7, "height": 25, "chars": ["\uee02"] },
             { "type": "bitmap", "file": smithed,		    "ascent": 7, "height": 25, "chars": ["\uee03"] },

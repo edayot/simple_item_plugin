@@ -105,6 +105,12 @@ class SubItem(BaseModel):
     def export(self, ctx: Context):
         export_translated_string(ctx, self.translation)
 
+    def get_guide_description(self, ctx: Context) -> Optional[TranslatedString]:
+        return None
+    
+    def get_id(self):
+        return f"{self.mineral.id}_{self.type}"
+
     @property
     def merge_overrides_policy(self) -> dict[str, MergeOverridesPolicy]:
         return {}
@@ -117,6 +123,24 @@ class SubItemBlock(SubItem):
 
     def get_base_item(self):
         return "minecraft:lodestone"
+    
+    def get_guide_description(self, ctx: Context) -> Optional[TranslatedString]:
+        if not self.block_properties.world_generation:
+            return None
+        
+        translated_string = (
+            f"{NAMESPACE}.guide_description.world_generation.{self.get_id()}", {
+                Lang.en_us: f""" \
+This block can be found :
+{"\n".join(["- " + where.to_human_string(Lang.en_us).capitalize() for where in self.block_properties.world_generation])}
+""",
+                Lang.fr_fr: f""" \
+Ce bloc peut être trouvé :
+{"\n".join(["- " + where.to_human_string(Lang.fr_fr).capitalize() for where in self.block_properties.world_generation])}
+""",
+            }
+        )
+        return translated_string
 
 
 class SubItemDamagable(SubItem):
@@ -387,6 +411,7 @@ class Mineral(Registry):
                 is_cookable=is_cookable,
                 is_armor=isinstance(subitem, SubItemArmor),
                 merge_overrides_policy=subitem.merge_overrides_policy,
+                guide_description=subitem.get_guide_description(ctx),
                 ).export(ctx)
             self.item_group.add_item(ctx, new_item)
         for item_part in ["ingot", "raw_ore", "raw_ore_block", "block"]:

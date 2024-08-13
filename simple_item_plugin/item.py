@@ -64,6 +64,31 @@ class WorldGenerationParams(BaseModel):
     biome: Optional[str] = None
     biome_blacklist: Optional[Literal[0, 1]] = None
 
+
+    def to_human_string(self, lang: Lang):
+        dimension = (self.dimension or "minecraft:overworld").split(":")[-1].capitalize()
+        biome = (self.biome or "none").split(":")[-1].capitalize()
+        tag = ""
+        range_num = f"y={self.min_y}..{self.max_y}"
+        if self.biome and self.biome.startswith("#"):
+            tag = " tag"
+        if lang == Lang.en_us:
+            range_num = f"in the range {range_num}"
+            if self.biome:
+                if self.biome_blacklist:
+                    return f"in the all biomes except {biome} biome{tag} in the {dimension}, {range_num}"
+                return f"in the {biome} biome{tag} in the {dimension}, {range_num}"
+            return f"in the {dimension}, {range_num}"
+        elif lang == Lang.fr_fr:
+            range_num = f"dans la range {range_num}"
+            if self.biome:
+                if self.biome_blacklist:
+                    return f"dans tous les biomes sauf le biome {biome}{tag} dans la dimension {dimension}, {range_num}"
+                return f"dans le biome {biome}{tag} dans la dimension {dimension}, {range_num}"
+            return f"dans la dimension {dimension}, {range_num}"
+        else:
+            raise ValueError(f"Invalid lang {lang}")
+
 class BlockProperties(BaseModel):
     base_block: str
     smart_waterlog: Optional[bool] = False
