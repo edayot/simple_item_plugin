@@ -103,10 +103,10 @@ class ItemRender:
     count: int = 1
     count_to_char: dict[int, int] = field(default_factory=dict)
 
-    void_small = "\uef01"
-    void_big = "\uef02\uef02"
-    space_small = "\uef03"
-    space_big = "\uef03\uef03\uef03\uef03\uef03\uef03\uef03\uef03"
+    void_small = "\uf8f1"
+    void_big = "\uf8f2\uf8f2"
+    space_small = "\uf8f3"
+    space_big = "\uf8f3\uf8f3\uf8f3\uf8f3\uf8f3\uf8f3\uf8f3\uf8f3"
 
     @property
     def char_item(self) -> str:
@@ -129,7 +129,7 @@ class ItemRender:
         char_count = self.count_to_char.get(self.count)
         if not char_count:
             raise ValueError(f"Count {self.count} not supported")
-        return f"\uef00\uef00\uef00{get_char(char_count)}"
+        return f"\uf8f0\uf8f0\uf8f0{get_char(char_count)}"
     
     @property
     def text(self) -> str:
@@ -179,7 +179,7 @@ class ItemRender:
 class ItemRenderWithBackground:
     item: ItemProtocol
     count_to_char: dict[int, int] 
-    space: str = "\uef01\uef01"
+    space: str = "\uf8f1\uf8f1"
     
 
     def to_text_component(self) -> list[MinecraftTextComponentBasePlus]:
@@ -192,13 +192,13 @@ class ItemRenderWithBackground:
             "color": "white",
         }
         space_2 = {
-            "text": self.space + "\uef03",
+            "text": self.space + "\uf8f3",
             "font": f"{NAMESPACE}:pages",
             "color": "white",
         }
         yield space_1
         yield {
-            "text": "\uef16\n",
+            "text": "\uf8f6\n",
             "font": f"{NAMESPACE}:pages",
             "color": "white",
         }
@@ -217,8 +217,8 @@ class ShapedRecipeRender:
     @property
     def page_font(self) -> str:
         return f"{NAMESPACE}:pages"
-    space_before_line = "\uef00\uef00"
-    space_before_result = "\uef00\uef03\uef03\uef03\uef03\uef03\uef03\uef03\uef03"
+    space_before_line = "\uf8f0\uf8f0"
+    space_before_result = "\uf8f0\uf8f3\uf8f3\uf8f3\uf8f3\uf8f3\uf8f3\uf8f3\uf8f3"
 
     def to_text_component(self) -> MinecraftTextComponentPlus:
         return list(self.get_craft_grid())
@@ -226,7 +226,7 @@ class ShapedRecipeRender:
 
     def get_craft_grid(self) -> Iterable[MinecraftTextComponentBasePlus]:
         yield {
-            "text":f"\uef13 \uef14\n",
+            "text":f"\uf8f7 \uf8f4\n",
             "font":self.page_font,
             "color":"white"
         }
@@ -276,15 +276,15 @@ class NBTSmeltingRender:
     @property
     def page_font(self) -> str:
         return f"{NAMESPACE}:pages"
-    space_before_line = "\uef00\uef00\uef00\uef00\uef03\uef03"
-    space_before_line_2 = "\uef01\uef01\uef01\uef00\uef00\uef00\uef00\uef00"
+    space_before_line = "\uf8f0\uf8f0\uf8f0\uf8f0\uf8f3\uf8f3"
+    space_before_line_2 = "\uf8f1\uf8f1\uf8f1\uf8f0\uf8f0\uf8f0\uf8f0\uf8f0"
 
     def to_text_component(self) -> MinecraftTextComponentPlus:
         return list(self.get_furnace_grid())
     
     def get_furnace_grid(self) -> Iterable[MinecraftTextComponentBasePlus]:
         yield {
-            "text":f"  \uef15\n",
+            "text":f"  \uf8f5\n",
             "font":self.page_font,
             "color":"white"
         }
@@ -407,10 +407,10 @@ class CategoryElementRender:
     def get_render(self) -> Iterable[MinecraftTextComponentBasePlus]:
         assert self.category_element.pages[0].page_index
         char_item = get_char(self.category_element.icon_char)
-        char_space = "\uef03"
+        char_space = "\uf8f3"
         char_item = f"{char_space}{char_item}{char_space}"
         if self.part == "down":
-            char_item = "\uef01"
+            char_item = "\uf8f1"
         yield {
             "text": char_item,
             "font": self.page_font,
@@ -490,10 +490,10 @@ class CategoryRender:
     def get_render(self) -> Iterable[MinecraftTextComponentBasePlus]:
         assert self.category.page_index, "No pages"
         char_item = get_char(self.category.icon_char)
-        char_space = "\uef03"
+        char_space = "\uf8f3"
         char_item = f"{char_space}{char_item}{char_space}"
         if self.part == "down":
-            char_item = "\uef01"
+            char_item = "\uf8f1"
         yield {
             "text": char_item,
             "font": self.page_font,
@@ -598,7 +598,7 @@ class Guide:
         offset = offset or self.char_offset
         res = self.char_index
         self.char_index += offset
-        assert self.char_index < 0xf8ff, "The guide generator has reached the maximum number of characters"
+        assert self.char_index < 0xf8f0, "The guide generator has reached the maximum number of characters"
         return res
 
     def get_model_list(self) -> Iterable[str]:
@@ -669,14 +669,14 @@ class Guide:
                 "type": "reference",
                 "id": "minecraft:include/space"
             },
-            { "type": "bitmap", "file": none_2,				"ascent": 7, "height": 8, "chars": ["\uef00"] },
-            { "type": "bitmap", "file": none_3,				"ascent": 7, "height": 8, "chars": ["\uef01"] },
-            { "type": "bitmap", "file": none_4,				"ascent": 7, "height": 8, "chars": ["\uef02"] },
-            { "type": "bitmap", "file": none_5,				"ascent": 7, "height": 8, "chars": ["\uef03"] },
-            { "type": "bitmap", "file": template_craft,		"ascent": -3+x, "height": 68, "chars": ["\uef13"] },
-            { "type": "bitmap", "file": template_result,	"ascent": -20+x, "height": 34, "chars": ["\uef14"] },
-            { "type": "bitmap", "file": furnace_craft,		"ascent": -4+x, "height": 68, "chars": ["\uef15"] },
-            { "type": "bitmap", "file": template_result,	"ascent": -3+x, "height": 34, "chars": ["\uef16"] },
+            { "type": "bitmap", "file": none_2,				"ascent": 7, "height": 8, "chars": ["\uf8f0"] },
+            { "type": "bitmap", "file": none_3,				"ascent": 7, "height": 8, "chars": ["\uf8f1"] },
+            { "type": "bitmap", "file": none_4,				"ascent": 7, "height": 8, "chars": ["\uf8f2"] },
+            { "type": "bitmap", "file": none_5,				"ascent": 7, "height": 8, "chars": ["\uf8f3"] },
+            { "type": "bitmap", "file": template_result,	"ascent": -20+x, "height": 34, "chars": ["\uf8f4"] },
+            { "type": "bitmap", "file": furnace_craft,		"ascent": -4+x, "height": 68, "chars": ["\uf8f5"] },
+            { "type": "bitmap", "file": template_result,	"ascent": -3+x, "height": 34, "chars": ["\uf8f6"] },
+            { "type": "bitmap", "file": template_craft,		"ascent": -3+x, "height": 68, "chars": ["\uf8f7"] },
             { "type": "bitmap", "file": github,				"ascent": 7, "height": 25, "chars": ["\uee01"] },
             { "type": "bitmap", "file": pmc,			    "ascent": 7, "height": 25, "chars": ["\uee02"] },
             { "type": "bitmap", "file": smithed,		    "ascent": 7, "height": 25, "chars": ["\uee03"] },
