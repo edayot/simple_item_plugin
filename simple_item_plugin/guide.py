@@ -396,6 +396,10 @@ class CategoryElementRender:
 
 @dataclass
 class Category:
+    """
+    After the CategoriesPages in the guide, this class represents a category,
+    contains a list of CategoryElement that themselves contains a list of Page (for now, only ShapedRecipe and NBTSmelting)
+    """
     name: TranslatedString
     icon_char: int
     elements: list[CategoryElement]
@@ -475,6 +479,9 @@ class CategoryRender:
 
 @dataclass
 class CategoriesPage:
+    """
+    A page at the beginning of the guide, containing clickable Category
+    """
     categories: list[Category]
 
     @classmethod
@@ -509,6 +516,9 @@ class CategoriesPage:
 
 @dataclass
 class CategoriesPages:
+    """
+    List of pages at the beginning of the guide
+    """
     pages: list[CategoriesPage]
 
     @classmethod
@@ -522,6 +532,9 @@ class CategoriesPages:
 
 @dataclass
 class AutoIncrement:
+    """
+    A simple auto increment class
+    """
     value: int = 0
     def __call__(self) -> int:
         self.value += 1
@@ -530,6 +543,9 @@ class AutoIncrement:
 
 @dataclass
 class Guide:
+    """
+    Class that handles font creation, rendering items
+    """
     ctx: Context
     draft: Generator
     opts: SimpleItemPluginOptions
