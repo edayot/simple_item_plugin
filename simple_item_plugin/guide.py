@@ -50,13 +50,20 @@ def batched(iterable: Iterable[T], n: int) -> Iterable[tuple[T, ...]]:
         yield batch
 
 
-def convert_text_component(text: MinecraftTextComponentPlus) -> MinecraftTextComponent:
+def convert_text_component(text: MinecraftTextComponentPlus, already_seen: Optional[set[int]] = None, max_depht: int = 200) -> MinecraftTextComponent:
+    if already_seen is None:
+        already_seen = set()
+    if max_depht <= 0:
+        raise ValueError("Max depht reached, circular reference ?")
     res : MinecraftTextComponent = []
     for part in text:
         if isinstance(part, str) or isinstance(part, dict):
             res.append(part)
         else:
-            res.extend(convert_text_component(part.to_text_component()))
+            if id(part) in already_seen:
+                raise ValueError("Circular reference")
+            already_seen.add(id(part))
+            res.extend(convert_text_component(part.to_text_component(), already_seen, max_depht - 1))
     return res
         
 
@@ -617,10 +624,7 @@ class Guide:
     def add_big_and_medium_font(self):
         big_font_path = pathlib.Path(__file__).parent / "assets" / "guide" / "font" / "big.json"
         big_font_namespace = f"{NAMESPACE}:big_font"
-        medium_font_path = pathlib.Path(__file__).parent / "assets" / "guide" / "font" / "medium.json"
-        medium_font_namespace = f"{NAMESPACE}:medium_font"
-        self.draft.assets.fonts[big_font_namespace] = Font(source_path=big_font_path)
-        self.draft.assets.fonts[medium_font_namespace] = Font(source_path=medium_font_path)
+        medium_font_path = pathlib.Path(__fu000namespace] = Font(source_path=medium_font_path)
 
     def create_font(self):
         self.add_big_and_medium_font()
@@ -677,10 +681,10 @@ class Guide:
             { "type": "bitmap", "file": furnace_craft,		"ascent": -4+x, "height": 68, "chars": ["\uf8f5"] },
             { "type": "bitmap", "file": template_result,	"ascent": -3+x, "height": 34, "chars": ["\uf8f6"] },
             { "type": "bitmap", "file": template_craft,		"ascent": -3+x, "height": 68, "chars": ["\uf8f7"] },
-            { "type": "bitmap", "file": github,				"ascent": 7, "height": 25, "chars": ["\uee01"] },
-            { "type": "bitmap", "file": pmc,			    "ascent": 7, "height": 25, "chars": ["\uee02"] },
-            { "type": "bitmap", "file": smithed,		    "ascent": 7, "height": 25, "chars": ["\uee03"] },
-            { "type": "bitmap", "file": modrinth,			"ascent": 7, "height": 25, "chars": ["\uee04"] },
+            { "type": "bitmap", "file": github,				"ascent": 7, "height": 25, "chars": ["\u0031"] },
+            { "type": "bitmap", "file": pmc,			    "ascent": 7, "height": 25, "chars": ["\u0032"] },
+            { "type": "bitmap", "file": smithed,		    "ascent": 7, "height": 25, "chars": ["\u0033"] },
+            { "type": "bitmap", "file": modrinth,			"ascent": 7, "height": 25, "chars": ["\u0034"] },
             ],
         })
         # fmt: on
