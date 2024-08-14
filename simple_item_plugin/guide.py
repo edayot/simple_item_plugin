@@ -624,7 +624,11 @@ class Guide:
     def add_big_and_medium_font(self):
         big_font_path = pathlib.Path(__file__).parent / "assets" / "guide" / "font" / "big.json"
         big_font_namespace = f"{NAMESPACE}:big_font"
-        medium_font_path = pathlib.Path(__fu000namespace] = Font(source_path=medium_font_path)
+        medium_font_path = pathlib.Path(__file__).parent / "assets" / "guide" / "font" / "medium.json"
+        medium_font_namespace = f"{NAMESPACE}:medium_font"
+        self.draft.assets.fonts[big_font_namespace] = Font(source_path=big_font_path)
+        self.draft.assets.fonts[medium_font_namespace] = Font(source_path=medium_font_path)
+
 
     def create_font(self):
         self.add_big_and_medium_font()
