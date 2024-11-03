@@ -1,11 +1,11 @@
-from beet import Context, Texture, ResourcePack
+from beet import Context, Texture, ResourcePack, Model
 from dataclasses import dataclass, field
 
 from typing import Any, Literal, get_args, Optional
 from typing_extensions import TypedDict, NotRequired
 from simple_item_plugin.utils import export_translated_string, Registry
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
-from simple_item_plugin.item import Item, BlockProperties, MergeOverridesPolicy, ItemGroup
+from simple_item_plugin.item import Item, BlockProperties, ItemGroup
 from simple_item_plugin.crafting import ShapedRecipe, ShapelessRecipe, NBTSmelting, VanillaItem, SimpledrawerMaterial
 
 from PIL import Image
@@ -15,6 +15,10 @@ from enum import Enum
 import json
 import pathlib
 import random
+import logging
+
+logger = logging.getLogger("simple_item_plugin")
+
 
 Mineral_list: list["Mineral"] = []
 ToolType = Literal["pickaxe", "axe", "shovel", "hoe", "sword"]
@@ -111,9 +115,6 @@ class SubItem(BaseModel):
     def get_id(self):
         return f"{self.mineral.id}_{self.type}"
 
-    @property
-    def merge_overrides_policy(self) -> dict[str, MergeOverridesPolicy]:
-        return {}
 
 
 class SubItemBlock(SubItem):
@@ -179,35 +180,20 @@ class SubItemArmor(SubItemDamagable):
                 "id": f"{NAMESPACE}:armor_toughness_{self.translation[0]}",
             },
         ])
-        color = self.mineral.get_fancyPants_color(ctx)
-        rgb = 256*256*color[0] + 256*color[1] + color[2]
-        res["minecraft:dyed_color"] = {
-            "rgb": rgb,
-            "show_in_tooltip": False,
+        res["minecraft:equippable"] = {
+            "slot": {
+                "helmet": "head",
+                "chestplate": "chest",
+                "leggings": "legs",
+                "boots": "feet",
+            }.get(self.type),
+            "model": f"{NAMESPACE}:{self.mineral.id}"
         }
+    
         return res
     
     def get_base_item(self):
-        # get a leather armor item depending on the type
-        match self.type:
-            case "helmet":
-                return "minecraft:leather_helmet"
-            case "chestplate":
-                return "minecraft:leather_chestplate"
-            case "leggings":
-                return "minecraft:leather_leggings"
-            case "boots":
-                return "minecraft:leather_boots"
-            case _:
-                raise ValueError("Invalid armor type")
-
-    @property
-    def merge_overrides_policy(self) -> dict[str, MergeOverridesPolicy]:
-        return {
-            "layer0": MergeOverridesPolicy.clear,
-            "layer1": MergeOverridesPolicy.use_model_path,
-            "layer2": MergeOverridesPolicy.use_vanilla,
-        }
+        return f"minecraft:jigsaw"
 
 class SubItemWeapon(SubItemDamagable):
     attack_damage: float
@@ -340,57 +326,32 @@ class Mineral(Registry):
         self.export_armor(ctx)
         self.export_subitem(ctx)
     
-    def get_fancyPants_color(self, ctx: Context):
-        armor_color_cache = ctx.meta["simple_item_plugin"]["stable_cache"].setdefault("armor_color", {})
-        if not self.id in armor_color_cache:
-            armor_color_cache[self.id] = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-        return armor_color_cache[self.id]
-
-    @staticmethod
-    def merge_layer(original: Image.Image, new: Image.Image) -> Image.Image:
-        new_size = (original.width+new.width, max(original.height, new.height))
-        new_image = Image.new("RGBA", new_size)
-        new_image.paste(original, (0, 0))
-        new_image.paste(new, (original.width, 0))
-        return new_image
 
     def export_armor(self, ctx: Context):
         if not any(item in ArmorTypeList for item in self.overrides):
             return
-        color = self.get_fancyPants_color(ctx)
-        layer_1_path = f"{NAMESPACE}:models/armor/{self.id}_layer_1"
-        layer_2_path = f"{NAMESPACE}:models/armor/{self.id}_layer_2"
-        clear_path = f"{NAMESPACE}:models/armor/clear"
-
-        assert layer_1_path in ctx.assets.textures
-        assert layer_2_path in ctx.assets.textures
-        if clear_path not in ctx.assets.textures:
-            ctx.assets.textures[clear_path] = Texture(Image.new("RGBA", (64, 32), (0, 0, 0, 0)))
-
-        layer_1 : Image.Image = ctx.assets.textures[layer_1_path].image
-        layer_2 : Image.Image = ctx.assets.textures[layer_2_path].image
-        layer_1 = layer_1.copy().convert("RGBA")
-        layer_2 = layer_2.copy().convert("RGBA")
-
-        layer_1.putpixel((0, 0), (*color, 255))
-        layer_2.putpixel((0, 0), (*color, 255))
-
-        minecraft_layer_1_path = "minecraft:models/armor/leather_layer_1"
-        minecraft_layer_2_path = "minecraft:models/armor/leather_layer_2"
-
-        fancyPants_layer_1_path = pathlib.Path(__file__).parent / "assets" / "fancyPants" / "leather_layer_1.png"
-        fancyPants_layer_2_path = pathlib.Path(__file__).parent / "assets" / "fancyPants" / "leather_layer_2.png"
-        fancyPants_layer_1 = Image.open(fancyPants_layer_1_path).convert("RGBA")
-        fancyPants_layer_2 = Image.open(fancyPants_layer_2_path).convert("RGBA")
-
-
-        new_layer_1 = self.merge_layer(fancyPants_layer_1, layer_1)
-        new_layer_2 = self.merge_layer(fancyPants_layer_2, layer_2)
+        ctx.assets.models[f"{NAMESPACE}:equipment/{self.id}"] = Model({
+            "layers": {
+                "humanoid": [
+                    {
+                        "texture": f"{NAMESPACE}:{self.id}"
+                    },
+                    
+                ],
+                "humanoid_leggings": [
+                    {
+                        "texture": f"{NAMESPACE}:{self.id}"
+                    }
+                ],
+            }
+        })
+        real_texture_path = f"{NAMESPACE}:entity/equipment/humanoid/{self.id}"
+        if not real_texture_path in ctx.assets.textures:
+            logger.warning(f"Texture {real_texture_path} not found")
+        real_texture_path_leggings = f"{NAMESPACE}:entity/equipment/humanoid_leggings/{self.id}"
+        if not real_texture_path_leggings in ctx.assets.textures:
+            logger.warning(f"Texture {real_texture_path_leggings} not found")
         
-        rp = ResourcePack()
-        rp.textures[minecraft_layer_1_path] = Texture(new_layer_1)
-        rp.textures[minecraft_layer_2_path] = Texture(new_layer_2)
-        ctx.assets.merge(rp)        
 
 
 
@@ -430,7 +391,6 @@ class Mineral(Registry):
                 block_properties=subitem.block_properties,
                 is_cookable=is_cookable,
                 is_armor=isinstance(subitem, SubItemArmor),
-                merge_overrides_policy=subitem.merge_overrides_policy,
                 guide_description=subitem.get_guide_description(ctx),
                 ).export(ctx)
             self.item_group.add_item(ctx, new_item)

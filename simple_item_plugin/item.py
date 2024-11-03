@@ -99,19 +99,6 @@ class BlockProperties(BaseModel):
     item_model_placed: Optional[str] = None
     
 
-class MergeOverridesPolicy(Enum):
-    clear = "clear"
-    generate_new = "generate_new"
-    use_model_path = "use_model_path"
-    use_vanilla = "use_vanilla"
-    delete = "delete"
-    replace_from_layer0 = "layer0"
-    replace_from_layer1 = "layer1"
-    replace_from_layer2 = "layer2"
-    replace_from_layer3 = "layer3"
-    replace_from_layer4 = "layer4"
-    replace_from_layer5 = "layer5"
-    replace_from_layer6 = "layer6"
 
 
 class Item(Registry):
@@ -129,7 +116,6 @@ class Item(Registry):
     block_properties: BlockProperties | None = None
     is_cookable: bool = False
     is_armor: bool = False
-    merge_overrides_policy: Optional[dict[str, MergeOverridesPolicy]] = None
 
     mineral: Optional[Mineral] = None
 
