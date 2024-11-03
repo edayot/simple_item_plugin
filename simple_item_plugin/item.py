@@ -96,7 +96,7 @@ class BlockProperties(BaseModel):
     world_generation: Optional[list[WorldGenerationParams]] = None
 
     base_item_placed: Optional[str] = None
-    custom_model_data_placed: Optional[int] = None
+    item_model_placed: Optional[str] = None
     
 
 class MergeOverridesPolicy(Enum):
@@ -125,14 +125,6 @@ class Item(Registry):
     components_extra: dict[str, Any] = field(default_factory=dict)
 
     base_item: str = "minecraft:jigsaw"
-
-    def custom_model_data(self, ctx: Union[Context, Generator]):
-        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        cmd_cache = real_ctx.meta["simple_item_plugin"]["stable_cache"].setdefault("cmd", {})
-        if self.id not in cmd_cache:
-            opts = real_ctx.validate("simple_item_plugin", SimpleItemPluginOptions)
-            cmd_cache[self.id] = max(cmd_cache.values(), default=opts.custom_model_data) + 1
-        return cmd_cache[self.id]
         
     block_properties: BlockProperties | None = None
     is_cookable: bool = False
@@ -158,6 +150,10 @@ class Item(Registry):
     @property
     def model_path(self):
         return f"{NAMESPACE}:item/{self.id}"
+    
+    @property
+    def item_model(self):
+        return f"{NAMESPACE}:{self.id}"
     
     @property
     def minimal_representation(self) -> dict[str, Any]:
@@ -363,7 +359,7 @@ prepend function ./on_place/{self.id}/place_entity:
     data modify entity @s item set value {{
         id:"{self.block_properties.base_item_placed or self.base_item}",
         count:1,
-        components:{{"minecraft:custom_model_data":{self.block_properties.custom_model_data_placed or self.custom_model_data(ctx)}}}
+        components:{{"minecraft:item_model":"{self.block_properties.item_model_placed or self.item_model}"}}
     }}
 
     data merge entity @s {{transformation:{{scale:[1.001f,1.001f,1.001f]}}}}
@@ -430,7 +426,7 @@ kill @s
                                     {
                                         "function": "minecraft:set_components",
                                         "components": {
-                                            "minecraft:custom_model_data": self.custom_model_data(ctx),
+                                            "minecraft:item_model": self.item_model,
                                             "minecraft:custom_data": self.create_custom_data(ctx),
                                         },
                                     },
@@ -465,28 +461,7 @@ kill @s
         }
 
     def create_assets(self, ctx: Union[Context, Generator]):
-        key = f"minecraft:item/{self.base_item.split(':')[1]}"
-        rp = ResourcePack()
-        
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        vanilla = real_ctx.inject(Vanilla).releases[real_ctx.meta["minecraft_version"]]
-        # get the default model for this item
-        model = Model(deepcopy(vanilla.assets.models[key].data))
-        if "overrides" in model.data:
-            self.create_overrides(ctx, model, rp, key)
-            ctx.assets.merge(rp)
-            return
-                
-        model.data["overrides"] = []
-        # add the custom model data to the model
-        model.data["overrides"].append(
-            {
-                "predicate": {"custom_model_data": self.custom_model_data(ctx)},
-                "model": self.model_path,
-            }
-        )
-        rp.models[key] = model
-        ctx.assets.merge(rp)
         
         # create the custom model
         if self.model_path in ctx.assets.models:
@@ -528,101 +503,6 @@ kill @s
                 }
             )
 
-    def get_new_texture_path(self, model: Model, texture_key: str, texture_path: str, merge_policy: MergeOverridesPolicy) -> tuple[str | None, bool]:
-        match merge_policy:
-            case MergeOverridesPolicy.clear:
-                new_texture_path = self.clear_texture_path
-                trow_warning = False
-            case MergeOverridesPolicy.generate_new:
-                new_texture_path = self.model_path + "/" + texture_path.split("/")[-1]
-                trow_warning = True
-            case MergeOverridesPolicy.use_model_path:
-                new_texture_path = self.model_path
-                trow_warning = True
-            case MergeOverridesPolicy.use_vanilla:
-                new_texture_path = texture_path
-                trow_warning = False
-            case MergeOverridesPolicy.delete:
-                new_texture_path = None
-                trow_warning = False
-            case MergeOverridesPolicy.replace_from_layer0 | MergeOverridesPolicy.replace_from_layer1 | MergeOverridesPolicy.replace_from_layer2 | MergeOverridesPolicy.replace_from_layer3 | MergeOverridesPolicy.replace_from_layer4 | MergeOverridesPolicy.replace_from_layer5 | MergeOverridesPolicy.replace_from_layer6:
-                new_layer = merge_policy.value
-                new_merge_policy = MergeOverridesPolicy.generate_new
-                if self.merge_overrides_policy and new_layer in self.merge_overrides_policy:
-                    new_merge_policy = self.merge_overrides_policy[new_layer]
-                if new_merge_policy == MergeOverridesPolicy.delete:
-                    new_merge_policy = MergeOverridesPolicy.use_vanilla
-                new_texture_path, trow_warning = self.get_new_texture_path(model, new_layer, model.data["textures"][new_layer], new_merge_policy)
-                trow_warning = False
-            case _:
-                raise ValueError(f"Invalid merge policy {merge_policy}")
-        return new_texture_path, trow_warning
-
-    def create_overrides(self, ctx: Union[Context, Generator], model: Model, rp: ResourcePack, key: str):
-        if any([
-            o["predicate"].get("custom_model_data", None) == self.custom_model_data(ctx)
-            for o in ctx.assets.models.get(key, Model()).data.get("overrides", [])
-        ]):
-            # user defined override already exists, no need to create a new one
-            return
-        model.data["overrides"].append({
-            "predicate": {"custom_model_data": self.custom_model_data(ctx)},
-            "model": self.model_path,
-        })
-        if not self.is_armor:
-            rp.models[self.model_path] = Model(
-                {"parent": "item/generated", "textures": {"layer0": self.model_path}}
-            )
-        else:
-            rp.models[self.model_path] = Model(
-                {
-                    "parent": "item/generated",
-                    "textures": {
-                        "layer0": f"{NAMESPACE}:item/clear",
-                        "layer1": self.model_path,
-                    },
-                }
-            )
-        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        vanilla = real_ctx.inject(Vanilla)
-        release = vanilla.releases[real_ctx.meta["minecraft_version"]]
-        new_overrides = []
-        for override in list(model.data["overrides"]):
-            o = deepcopy(override)
-            if "custom_model_data" in o["predicate"]:
-                continue
-            o["predicate"]["custom_model_data"] = self.custom_model_data(ctx)
-            namespace_model_path = self.model_path + "/" + o["model"].split("/")[-1]
-            minecraft_model_path = o["model"]
-            minecraft_model_path = f"minecraft:{minecraft_model_path}" if ":" not in minecraft_model_path else minecraft_model_path
-
-            # create the model
-            minecraft_model = Model(deepcopy(release.assets.models[minecraft_model_path].data))
-            for texture_key, texture_path in list(minecraft_model.data["textures"].items()):
-                merge_policy = MergeOverridesPolicy.generate_new
-                if self.merge_overrides_policy and texture_key in self.merge_overrides_policy:
-                    merge_policy = self.merge_overrides_policy[texture_key]
-                new_texture_path, trow_warning = self.get_new_texture_path(minecraft_model, texture_key, texture_path, merge_policy)
-                if new_texture_path:
-                    minecraft_model.data["textures"][texture_key] = new_texture_path
-                    if trow_warning and new_texture_path not in real_ctx.assets.textures:
-                        logger.warning(f"Texture {new_texture_path} not found in the resource pack")
-            for texture_key, texture_path in list(minecraft_model.data["textures"].items()):
-                # test if we have to delete the texture
-                merge_policy = MergeOverridesPolicy.generate_new
-                if self.merge_overrides_policy and texture_key in self.merge_overrides_policy:
-                    merge_policy = self.merge_overrides_policy[texture_key]
-                if merge_policy == MergeOverridesPolicy.delete:
-                    del minecraft_model.data["textures"][texture_key]
-
-
-
-            rp.models[namespace_model_path] = minecraft_model
-            o["model"] = namespace_model_path
-            new_overrides.append(o)
-        model.data["overrides"].extend(new_overrides)
-        rp.models[key] = model
-        
     def export(self, ctx: Union[Context, Generator]) -> Self:
         self.create_loot_table(ctx)
         self.create_translation(ctx)

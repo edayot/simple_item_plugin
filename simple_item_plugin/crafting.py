@@ -350,7 +350,7 @@ execute
             ] = Recipe(
                 {
                     "type": f"minecraft:{self.type_to_crafting_type(type)}",
-                    "ingredient": {"item": self.item.base_item},
+                    "ingredient": self.item.base_item,
                     "result": {
                         "id": self.item.base_item,
                     },

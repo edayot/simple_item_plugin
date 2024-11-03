@@ -122,7 +122,7 @@ class SubItemBlock(SubItem):
     )
 
     def get_base_item(self):
-        return "minecraft:lodestone"
+        return "minecraft:furnace"
     
     def get_guide_description(self, ctx: Context) -> Optional[TranslatedString]:
         if not self.block_properties.world_generation:
@@ -265,7 +265,7 @@ class SubItemTool(SubItemWeapon):
             res.update(
                 {
                     "minecraft:tool": {
-                        "rules": "rules": [
+                        "rules": [
                             {
                                 "blocks": "minecraft:cobweb",
                                 "correct_for_drops": True,

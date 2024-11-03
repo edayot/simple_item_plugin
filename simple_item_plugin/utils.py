@@ -29,7 +29,6 @@ def export_translated_string(ctx: Union[Context, Generator], translation: Transl
 
 
 class SimpleItemPluginOptions(BaseModel):
-    custom_model_data: int
     generate_guide: bool = True
     disable_guide_cache: bool = False
     add_give_all_function: bool = True
