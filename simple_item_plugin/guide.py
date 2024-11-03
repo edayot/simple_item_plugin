@@ -60,7 +60,7 @@ def convert_text_component(text: MinecraftTextComponentPlus, already_seen: Optio
         if isinstance(part, str) or isinstance(part, dict):
             res.append(part)
         else:
-            if id(part) in already_seen:
+            if id(part) in already_seen and False:
                 raise ValueError("Circular reference")
             already_seen.add(id(part))
             res.extend(convert_text_component(part.to_text_component(), already_seen, max_depht - 1))

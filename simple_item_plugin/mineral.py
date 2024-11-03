@@ -91,7 +91,7 @@ class SubItem(BaseModel):
                         "amount": value["amount"],
                         "operation": value["operation"] if "operation" in value else "add_value",
                         "slot": value["slot"],
-                        "id": f"{NAMESPACE}:{key.split('.')[-1]}_{self.translation[0]}",
+                        "id": f"{key.split('.')[-1]}_{NAMESPACE}_{self.translation[0]}",
                     }
                     for key, value in self.additional_attributes.items()
                 ],
@@ -165,14 +165,14 @@ class SubItemArmor(SubItemDamagable):
         res.setdefault("minecraft:attribute_modifiers", {}).setdefault("modifiers", [])
         res["minecraft:attribute_modifiers"]["modifiers"].extend([
             {
-                "type": "minecraft:generic.armor",
+                "type": "minecraft:armor",
                 "amount": self.armor,
                 "operation": "add_value",
                 "slot": "armor",
                 "id": f"{NAMESPACE}:armor_{self.translation[0]}",
             },
             {
-                "type": "minecraft:generic.armor_toughness",
+                "type": "minecraft:armor_toughness",
                 "amount": self.armor_toughness,
                 "operation": "add_value",
                 "slot": "armor",
@@ -218,14 +218,14 @@ class SubItemWeapon(SubItemDamagable):
         res.setdefault("minecraft:attribute_modifiers", {}).setdefault("modifiers", [])
         res["minecraft:attribute_modifiers"]["modifiers"].extend([
             {
-                "type": "minecraft:generic.attack_damage",
+                "type": "minecraft:attack_damage",
                 "amount": self.attack_damage,
                 "operation": "add_value",
                 "slot": "hand",
                 "id": f"{NAMESPACE}:attack_damage_{self.translation[0]}",
             },
             {
-                "type": "minecraft:generic.attack_speed",
+                "type": "minecraft:attack_speed",
                 "amount": self.attack_speed-4,
                 "operation": "add_value",
                 "slot": "hand",
@@ -242,24 +242,44 @@ class SubItemTool(SubItemWeapon):
 
     def get_components(self, ctx: Context):
         res = super().get_components(ctx)
-        res.update(
-            {
-                "minecraft:tool": {
-                    "rules": [
-                        {
-                            "blocks": f"#minecraft:incorrect_for_{self.tier}_tool",
-                            "correct_for_drops": False,
-                        },
-                        {
-                            "blocks": f"#minecraft:mineable/{self.type}",
-                            "correct_for_drops": True,
-                            "speed": self.speed,
-                        },
-                    ],
-                    "damage_per_block": 1,
+        if not self.type == "sword":
+            res.update(
+                {
+                    "minecraft:tool": {
+                        "rules": [
+                            {
+                                "blocks": f"#minecraft:incorrect_for_{self.tier}_tool",
+                                "correct_for_drops": False,
+                            },
+                            {
+                                "blocks": f"#minecraft:mineable/{self.type}",
+                                "correct_for_drops": True,
+                                "speed": self.speed,
+                            },
+                        ],
+                        "damage_per_block": 1,
+                    }
                 }
-            }
-        )
+            )
+        else:
+            res.update(
+                {
+                    "minecraft:tool": {
+                        "rules": "rules": [
+                            {
+                                "blocks": "minecraft:cobweb",
+                                "correct_for_drops": True,
+                                "speed": 15.0
+                            },
+                            {
+                                "blocks": "#minecraft:sword_efficient",
+                                "speed": 1.5
+                            }
+                        ],
+                        "damage_per_block": 2,
+                    }
+                }
+            )
         return res
 
     def get_base_item(self):
