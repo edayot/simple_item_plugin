@@ -284,7 +284,7 @@ class NBTSmeltingRender:
     def page_font(self) -> str:
         return f"{NAMESPACE}:pages"
     space_before_line = "\uf8f0\uf8f0\uf8f0\uf8f0\uf8f3\uf8f3"
-    space_before_line_2 = "\uf8f1\uf8f1\uf8f1\uf8f0\uf8f0\uf8f0\uf8f0\uf8f0"
+    space_before_line_2 = "\uf8f1\uf8f1\uf8f1\uf8f0\uf8f0\uf8f0\uf8f3\uf8f3\uf8f3\uf8f3\uf8f3"
 
     def to_text_component(self) -> MinecraftTextComponentPlus:
         return list(self.get_furnace_grid())
@@ -316,7 +316,7 @@ class NBTSmeltingRender:
                 count_to_char=self.count_to_char,
             )
             yield "\n"
-        yield "\n\n\n"
+        yield "\n\n"
             
     
 
