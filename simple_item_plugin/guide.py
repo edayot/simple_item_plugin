@@ -17,7 +17,7 @@ def guide(ctx: Context, opts: SimpleItemPluginOptions):
     if not opts.generate_guide:
         return
     with ctx.generate.draft() as draft:
-        if not opts.disable_guide_cache and False:
+        if not opts.disable_guide_cache:
             draft.cache("guide", "guide")
         Guide(ctx, draft, opts).gen()
 
@@ -361,6 +361,8 @@ class CategoryElement:
         for recipe in NBTSmelting.iter_values(ctx):
             if recipe.result[0] == item:
                 furnaces.append(recipe)
+        on_one_page = len(crafts) + len(furnaces) <= 1
+        
         item_name = item.minimal_representation["components"]["minecraft:item_name"]
         item_name = json.loads(item_name)
         item_name["font"] = f"{NAMESPACE}:medium_font"
@@ -373,7 +375,16 @@ class CategoryElement:
         content : MinecraftTextComponentPlus = [""]
         content.append(item_name)
         content.append("\n")
-        content.append(ItemRenderWithBackground(item=item, count_to_char=count_to_char))
+        if not on_one_page:
+            content.append(ItemRenderWithBackground(item=item, count_to_char=count_to_char))
+        else:
+            content.append("\n")
+            craft = crafts[0] if len(crafts) > 0 else furnaces[0]
+            if isinstance(craft, ShapedRecipe):
+                content.append(ShapedRecipeRender(recipe=craft, count_to_char=count_to_char))
+            else:
+                content.append(NBTSmeltingRender(recipe=craft, count_to_char=count_to_char))
+            
         content.append({
             "translate": description[0],
             "color":"black",
@@ -381,18 +392,19 @@ class CategoryElement:
         })
         yield Page(ctx=ctx, content=content)
         
-        for recipe_batch in batched(crafts, 2):
-            content : MinecraftTextComponentPlus = [""]
-            for recipe in recipe_batch:
-                content.append(ShapedRecipeRender(recipe=recipe, count_to_char=count_to_char))
-            content.append("\n")
-            yield Page(ctx=ctx, content=content)
-        for recipe_batch in batched(furnaces, 2):
-            content : MinecraftTextComponentPlus = [""]
-            for recipe in recipe_batch:
-                content.append(NBTSmeltingRender(recipe=recipe, count_to_char=count_to_char))
-            content.append("\n")
-            yield Page(ctx=ctx, content=content)
+        if not on_one_page:
+            for recipe_batch in batched(crafts, 2):
+                content : MinecraftTextComponentPlus = [""]
+                for recipe in recipe_batch:
+                    content.append(ShapedRecipeRender(recipe=recipe, count_to_char=count_to_char))
+                content.append("\n")
+                yield Page(ctx=ctx, content=content)
+            for recipe_batch in batched(furnaces, 2):
+                content : MinecraftTextComponentPlus = [""]
+                for recipe in recipe_batch:
+                    content.append(NBTSmeltingRender(recipe=recipe, count_to_char=count_to_char))
+                content.append("\n")
+                yield Page(ctx=ctx, content=content)
 
     def to_pages(self, ctx: Context) -> Iterable[Page]:
         for page in self.pages:
@@ -735,7 +747,14 @@ class Guide:
                 )
 
     def to_pages(self) -> Iterable[Page]:
-        self.categories = CategoriesPages.from_item_groups(self.ctx, ItemGroup.iter_values(self.ctx), self.count_to_char)
+        item_groups = ItemGroup.iter_values(self.ctx)
+        items_on_first_page = False
+        if (
+            len(list(item_groups)) == 1
+            and list(item_groups)[0].id == "special:all_items"
+        ):
+            items_on_first_page = True
+        self.categories = CategoriesPages.from_item_groups(self.ctx, item_groups, self.count_to_char)
 
         self.ctx.meta.setdefault("guide_index", AutoIncrement())
         first_page_content : MinecraftTextComponentPlus = [""]
@@ -747,14 +766,25 @@ class Guide:
         first_page_content.append({
             "translate": f"{NAMESPACE}.guide.first_page",
         })
-        first_page_content.append("\n")
+        if items_on_first_page:
+            self.ctx.meta["guide_index"].value -= 1
+            pages : list[list[Page]]= []
+            for categories_page in self.categories.pages:
+                for category in categories_page.categories:
+                    pages.append(list(category.to_pages(self.ctx)))
+            assert len(pages) == 1
+            assert len(pages[0]) == 1
+            page = pages[0][0]
+            first_page_content.extend(page.to_text_component())
+
         yield Page(ctx=self.ctx, content=first_page_content, page_index=self.ctx.meta["guide_index"]())
         
-        for categories_page in self.categories.pages:
-            yield categories_page.to_page(self.ctx)
-        for categories_page in self.categories.pages:
-            for category in categories_page.categories:
-                yield from category.to_pages(self.ctx)
+        if not items_on_first_page:
+            for categories_page in self.categories.pages:
+                yield categories_page.to_page(self.ctx)
+            for categories_page in self.categories.pages:
+                for category in categories_page.categories:
+                    yield from category.to_pages(self.ctx)
         for categories_page in self.categories.pages:
             for category in categories_page.categories:
                 for element in category.elements:
