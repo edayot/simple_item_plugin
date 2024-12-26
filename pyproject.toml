@@ -7,9 +7,9 @@ license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
 bolt = ">=0.48.0"
-model-resolver = ">=0.10.0"
+model-resolver = ">=1.1.0"
 beet = ">=0.108.3"
 weld-deps = ">=0.8.0"
 mecha = ">=0.95.2"
