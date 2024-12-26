@@ -54,6 +54,6 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
         json.dump(ctx.meta["simple_item_plugin"]["stable_cache"], f, indent=4)
 
     if opts.item_for_pack_png:
-        tex = ctx.assets.textures[Guide.item_to_render()]
+        tex = ctx.assets.textures[Guide.item_to_render(Item.get(ctx, opts.item_for_pack_png))]
         ctx.data.extra["pack.png"] = tex
         ctx.assets.extra["pack.png"] = tex
