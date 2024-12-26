@@ -1,7 +1,7 @@
 
 from beet import Context, configurable, Function, TextFile
 from simple_item_plugin.types import NAMESPACE, AUTHOR
-from simple_item_plugin.utils import export_translated_string, Lang, SimpleItemPluginOptions
+from simple_item_plugin.utils import export_translated_string, Lang, SimpleItemPluginOptions, logger
 from simple_item_plugin.guide import Guide, guide
 from simple_item_plugin.versioning import beet_default as versioning
 from simple_item_plugin.item import Item
@@ -46,9 +46,10 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
 
     opts_weld_deps = ctx.validate("weld_deps", WeldDepsConfig)
     for dep in ctx.meta["required_deps"]:
-        assert dep in [
+        if not dep in [
             k for k, _ in opts_weld_deps.deps_dict()
-        ], f"Required dep {dep} not found in weld_deps"
+        ]:
+            logger.warning(f"Required dep {dep} not found in weld_deps")
 
     with open(stable_cache, "w") as f:
         json.dump(ctx.meta["simple_item_plugin"]["stable_cache"], f, indent=4)

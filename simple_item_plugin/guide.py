@@ -379,10 +379,10 @@ class CategoryElement:
             content.append(ItemRenderWithBackground(item=item, count_to_char=count_to_char))
         else:
             content.append("\n")
-            craft = crafts[0] if len(crafts) > 0 else furnaces[0]
+            craft = crafts[0] if len(crafts) > 0 else furnaces[0] if len(furnaces) > 0 else None
             if isinstance(craft, ShapedRecipe):
                 content.append(ShapedRecipeRender(recipe=craft, count_to_char=count_to_char))
-            else:
+            elif isinstance(craft, NBTSmelting):
                 content.append(NBTSmeltingRender(recipe=craft, count_to_char=count_to_char))
             
         content.append({

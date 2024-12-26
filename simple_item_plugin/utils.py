@@ -6,6 +6,9 @@ from typing import Union, Optional, Self, Iterable, Protocol, Any, runtime_check
 from pydantic import BaseModel
 from nbtlib import Compound
 from model_resolver import Item as ModelResolverItem
+import logging
+
+logger = logging.getLogger("simple_item_plugin")
 
 
 def generate_uuid() -> list[int]:
