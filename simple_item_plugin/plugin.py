@@ -2,7 +2,7 @@
 from beet import Context, configurable, Function, TextFile
 from simple_item_plugin.types import NAMESPACE, AUTHOR
 from simple_item_plugin.utils import export_translated_string, Lang, SimpleItemPluginOptions
-from simple_item_plugin.guide import guide
+from simple_item_plugin.guide import Guide, guide
 from simple_item_plugin.versioning import beet_default as versioning
 from simple_item_plugin.item import Item
 from mecha import beet_default as mecha
@@ -53,7 +53,7 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
     with open(stable_cache, "w") as f:
         json.dump(ctx.meta["simple_item_plugin"]["stable_cache"], f, indent=4)
 
-    if opts.render_path_for_pack_png:
-        tex = ctx.assets.textures[opts.render_path_for_pack_png]
+    if opts.item_for_pack_png:
+        tex = ctx.assets.textures[Guide.item_to_render()]
         ctx.data.extra["pack.png"] = tex
         ctx.assets.extra["pack.png"] = tex

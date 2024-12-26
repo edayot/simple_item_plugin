@@ -6,8 +6,8 @@ from typing import Any, Protocol, Literal, Optional, NamedTuple, Iterable, TypeV
 import json
 from dataclasses import dataclass, field
 from beet import Context, Generator, Texture, Font, ItemModifier, configurable
-from model_resolver import beet_default as model_resolver
 from PIL import Image, ImageDraw, ImageFont
+from model_resolver import Render
 from itertools import islice
 import pathlib
 
@@ -17,7 +17,7 @@ def guide(ctx: Context, opts: SimpleItemPluginOptions):
     if not opts.generate_guide:
         return
     with ctx.generate.draft() as draft:
-        if not opts.disable_guide_cache:
+        if not opts.disable_guide_cache and False:
             draft.cache("guide", "guide")
         Guide(ctx, draft, opts).gen()
 
@@ -620,18 +620,9 @@ class Guide:
         assert self.char_index < 0xf8f0, "The guide generator has reached the maximum number of characters"
         return res
 
-    def get_model_list(self) -> Iterable[str]:
-        for recipe in ShapedRecipe.iter_values(self.ctx):
-            for row in recipe.items:
-                for item in row:
-                    if item:
-                        yield item.model_path
-            yield recipe.result[0].model_path
-        for item in Item.iter_values(self.ctx):
-            yield item.model_path
-
-    def model_path_to_render_path(self, model_path: str) -> str:
-        return f"{NAMESPACE}:render/{model_path.replace(':', '/')}"
+    @staticmethod
+    def item_to_render(item: ItemProtocol) -> str:
+        return f"{NAMESPACE}:render/{item.id.replace(':', '/')}"
     
     def add_big_and_medium_font(self):
         big_font_path = pathlib.Path(__file__).parent / "assets" / "guide" / "font" / "big.json"
@@ -728,7 +719,7 @@ class Guide:
         for item in items:
             if item.char_index:
                 continue
-            render_path = self.model_path_to_render_path(item.model_path)
+            render_path = self.item_to_render(item)
             if not render_path in self.draft.assets.textures:
                 raise Exception(f"Texture {render_path} not found")
             item.char_index = self.get_new_char()
@@ -797,8 +788,15 @@ class Guide:
         if not guide:
             raise Exception("Guide item not found")
         VanillaItem(id="minecraft:air").export(self.ctx)
-        self.ctx.meta["model_resolver"]["filter"] = set(self.get_model_list())
-        self.ctx.require(model_resolver)
+        render = Render(self.ctx)
+        for item in [
+            *Item.iter_values(self.ctx), 
+            *ExternalItem.iter_values(self.ctx), 
+            *VanillaItem.iter_values(self.ctx)
+        ]:
+            item: ItemProtocol
+            render.add_item_task(item.to_model_resolver(), path_ctx=self.item_to_render(item))
+        render.run()
         for texture_path in self.ctx.assets.textures.match(f"{NAMESPACE}:render/**"):
             img: Image.Image = self.ctx.assets.textures[texture_path].image
             img.putpixel((0, 0), (137, 137, 137, 255))

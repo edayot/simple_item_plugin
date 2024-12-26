@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
 from simple_item_plugin.types import TextComponent, TextComponent_base, NAMESPACE, TranslatedString, Lang
-from beet import Context, FunctionTag, Function, LootTable, Model, Texture, ResourcePack, Generator
+from beet import Context, FunctionTag, Function, ItemModel, LootTable, Model, Texture, ResourcePack, Generator
 from PIL import Image
 from typing import Any, Optional, TYPE_CHECKING, Union, Self
 from typing_extensions import TypedDict, NotRequired, Literal, Optional
 from simple_item_plugin.utils import export_translated_string, SimpleItemPluginOptions, Registry, ItemProtocol
 from beet.contrib.vanilla import Vanilla
+from model_resolver import Item as ModelResolverItem
 
 from nbtlib.tag import Compound, String, Byte
 from nbtlib import serialize_tag
@@ -151,6 +152,17 @@ class Item(Registry):
             }
         }
     
+    def to_model_resolver(self) -> ModelResolverItem: 
+        return ModelResolverItem(
+            id=self.id,
+            count=1,
+            components={
+                "minecraft:item_model": self.item_model,
+                "minecraft:custom_data": self.create_custom_data(),
+                **self.components_extra,
+            },
+        )
+    
     def __hash__(self):
         return hash(f"{NAMESPACE}:self.id")
     
@@ -221,13 +233,14 @@ class Item(Registry):
         lore.append({"translate": f"{NAMESPACE}.name", "color": "blue", "italic": True})
         return lore
 
-    def create_custom_data(self, ctx: Union[Context, Generator]):
+    def create_custom_data(self, ctx: Optional[Union[Context, Generator]] = None):
         res : dict[str, Any] = {
             "smithed": {"id": self.namespace_id},
         }
         if self.is_cookable:
-            real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-            real_ctx.meta["required_deps"].add("nbtsmelting")
+            if ctx:
+                real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
+                real_ctx.meta["required_deps"].add("nbtsmelting")
             res["nbt_smelting"] = 1
         if self.block_properties:
             res["smithed"]["block"] = {"id": self.namespace_id}
@@ -449,9 +462,20 @@ kill @s
     def create_assets(self, ctx: Union[Context, Generator]):
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
         
+        
+        if self.item_model in real_ctx.assets.item_models:
+            return
+        ctx.assets.item_models[self.item_model] = ItemModel({
+            "model": {
+                "type": "model",
+                "model": self.model_path,
+            }
+        })
+
         # create the custom model
         if self.model_path in ctx.assets.models:
             return
+
         if not self.block_properties:
             if not self.is_armor:
                 ctx.assets.models[self.model_path] = Model(

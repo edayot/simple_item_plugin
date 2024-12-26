@@ -5,6 +5,7 @@ from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
 from typing import Union, Optional, Self, Iterable, Protocol, Any, runtime_checkable
 from pydantic import BaseModel
 from nbtlib import Compound
+from model_resolver import Item as ModelResolverItem
 
 
 def generate_uuid() -> list[int]:
@@ -32,7 +33,7 @@ class SimpleItemPluginOptions(BaseModel):
     generate_guide: bool = True
     disable_guide_cache: bool = False
     add_give_all_function: bool = True
-    render_path_for_pack_png: Optional[str] = None
+    item_for_pack_png: Optional[str] = None
     license_path: Optional[str] = None
     readme_path: Optional[str] = None
     items_on_first_page: bool = False
@@ -94,11 +95,11 @@ class ItemProtocol(Protocol):
     @property
     def minimal_representation(self) -> dict[str, Any]: raise NotImplementedError()
 
-    @property
-    def model_path(self) -> str: raise NotImplementedError()
 
     def to_nbt(self, i: int) -> Compound: raise NotImplementedError()
 
     def result_command(self, count: int, type : str = "block", slot : int = 16) -> str: raise NotImplementedError()
+
+    def to_model_resolver(self) -> ModelResolverItem: raise NotImplementedError
 
         

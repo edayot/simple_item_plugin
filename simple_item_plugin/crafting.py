@@ -12,6 +12,7 @@ from beet import Context, Function, FunctionTag, Recipe
 from simple_item_plugin.item import Item
 from simple_item_plugin.types import NAMESPACE, TranslatedString
 from simple_item_plugin.utils import Registry, ItemProtocol
+from model_resolver import Item as ModelResolverItem
 import json
 import random
 
@@ -39,8 +40,8 @@ class VanillaItem(Registry):
             raise ValueError(f"Invalid type {type}")
     
     @property
-    def model_path(self):
-        return f"minecraft:item/{self.id.replace('minecraft:', '')}"
+    def item_model(self):
+        return f"minecraft:{self.id.replace('minecraft:', '')}"
     
     @property
     def minimal_representation(self) -> dict[str, Any]:
@@ -49,12 +50,19 @@ class VanillaItem(Registry):
     @property
     def guide_description(self) -> Optional[TranslatedString]:
         return None
+    
+    def to_model_resolver(self) -> ModelResolverItem:
+        return ModelResolverItem(
+            id=self.id,
+        )
+
 
 
 class ExternalItem(Registry):
     id: str
     loot_table_path: str
-    model_path: str
+    item_model: str
+    base_item: str = "minecraft:diamond"
     minimal_representation: dict[str, Any]
     guide_description: Optional[TranslatedString] = None
     page_index: Optional[int] = None
@@ -113,6 +121,15 @@ class ExternalItem(Registry):
             return f"loot replace entity @s container.{slot} loot {loot_table_path}"
         else:
             raise ValueError(f"Invalid type {type}")
+        
+    def to_model_resolver(self) -> ModelResolverItem:
+        return ModelResolverItem(
+            id=self.id,
+            count=1,
+            components={
+                "minecraft:item_model": self.item_model,
+            }
+        )
     
 
 ItemType = Union[ItemProtocol, None]
