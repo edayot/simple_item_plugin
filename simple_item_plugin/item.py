@@ -260,11 +260,22 @@ class Item(Registry):
     def handle_world_generation(self, ctx: Union[Context, Generator]):
         if not self.block_properties or not self.block_properties.world_generation:
             return
+        registry = f"{NAMESPACE}:impl/load_worldgen"
+        registry_call = f"{NAMESPACE}:impl/calls/load_worldgen"
+        registry_tag = f"{NAMESPACE}:post_load"
+        post_load_tag = "load:post_load"
         for i, world_gen in enumerate(self.block_properties.world_generation):
-            registry = f"{NAMESPACE}:impl/load_worldgen"
+            # init function
             if registry not in ctx.data.functions:
-                ctx.data.functions[registry] = Function()
-            
+                ctx.data.functions[registry] = Function("# @public\n\n")
+            if not post_load_tag in ctx.data.function_tags:
+                ctx.data.function_tags[post_load_tag] = FunctionTag()
+            if f"#{registry_tag}" not in ctx.data.function_tags[post_load_tag].data["values"]:
+                ctx.data.function_tags[post_load_tag].data["values"].append(f"#{registry_tag}")
+            if registry_tag not in ctx.data.function_tags:
+                ctx.data.function_tags[registry_tag] = FunctionTag()
+            if registry_call not in ctx.data.function_tags[registry_tag].data["values"]:
+                ctx.data.function_tags[registry_tag].data["values"].append(registry_call)
             args = Compound()
             command = ""
             if world_gen.dimension:

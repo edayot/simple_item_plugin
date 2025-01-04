@@ -787,7 +787,6 @@ class Guide:
         guide = Item.get(self.ctx, "guide")
         if not guide:
             raise Exception("Guide item not found")
-        VanillaItem(id="minecraft:air").export(self.ctx)
         render = Render(self.ctx)
         for item in [
             *Item.iter_values(self.ctx), 
