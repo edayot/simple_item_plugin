@@ -250,7 +250,7 @@ class Item(Registry):
         if not self.block_properties:
             return
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        deps_needed = ["custom_block_ext", "%20chunk_scan.ores", "chunk_scan"]
+        deps_needed = ["custom_block_ext"]
         real_ctx.meta["required_deps"].update(deps_needed)
 
         self.create_custom_block_placement(ctx)
@@ -260,6 +260,10 @@ class Item(Registry):
     def handle_world_generation(self, ctx: Union[Context, Generator]):
         if not self.block_properties or not self.block_properties.world_generation:
             return
+        deps_needed = ["%20chunk_scan.ores", "chunk_scan"]
+        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
+        real_ctx.meta["required_deps"].update(deps_needed)
+        
         registry = f"{NAMESPACE}:impl/load_worldgen"
         registry_call = f"{NAMESPACE}:impl/calls/load_worldgen"
         registry_tag = f"{NAMESPACE}:post_load"

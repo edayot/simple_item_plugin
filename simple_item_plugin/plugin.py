@@ -9,6 +9,7 @@ from mecha import beet_default as mecha
 from weld_deps.main import DepsConfig as WeldDepsConfig
 import json
 import pathlib
+from model_resolver import Render
 
 
 
@@ -55,6 +56,12 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
         json.dump(ctx.meta["simple_item_plugin"]["stable_cache"], f, indent=4)
 
     if opts.item_for_pack_png:
-        tex = ctx.assets.textures[Guide.item_to_render(Item.get(ctx, opts.item_for_pack_png))]
+        item = Item.get(ctx, opts.item_for_pack_png)
+        path = Guide.item_to_render(item)
+        if not path in ctx.assets.textures:
+            render = Render(ctx)
+            render.add_item_task(item.to_model_resolver(), path_ctx=path)
+            render.run()
+        tex = ctx.assets.textures[path]
         ctx.data.extra["pack.png"] = tex
         ctx.assets.extra["pack.png"] = tex
