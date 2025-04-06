@@ -1,8 +1,9 @@
 
+from copy import deepcopy
 from simple_item_plugin.item import ItemGroup, Item
 from simple_item_plugin.crafting import ShapedRecipe, NBTSmelting, VanillaItem, ExternalItem
 from simple_item_plugin.utils import TranslatedString, ItemProtocol, NAMESPACE, Lang, export_translated_string, SimpleItemPluginOptions
-from typing import Any, Protocol, Literal, Optional, NamedTuple, Iterable, TypeVar
+from typing import Any, Callable, Protocol, Literal, Optional, NamedTuple, Iterable, TypeVar
 import json
 from dataclasses import dataclass, field
 from beet import Context, Generator, Texture, Font, ItemModifier, configurable
@@ -158,7 +159,7 @@ class ItemRender:
     def to_text_component(self) -> MinecraftTextComponentPlus:
         return [self.get_render()]
 
-    def get_render(self) -> dict[str, Any]:
+    def get_render(self) -> MinecraftTextComponentBasePlus:
         if (not self.item) or (self.item.minimal_representation.get("id") == "minecraft:air"):
             return {
                 "text": self.char_void,
@@ -170,15 +171,15 @@ class ItemRender:
             "text": self.text,
             "font": self.page_font,
             "color": "white",
-            "hoverEvent": {
+            "hover_event": {
                 "action": "show_item", 
-                "contents": self.item.minimal_representation
+                **self.item.minimal_representation
             },
         }
         if self.item.page_index:
-            res["clickEvent"] = {
+            res["click_event"] = {
                 "action": "change_page",
-                "value": f"{self.item.page_index}",
+                "page": self.item.page_index,
             }
         return res
     
@@ -337,6 +338,8 @@ class CategoryElement:
     minimal_representation: dict[str, Any]
     pages: list[Page]
 
+    item: Optional[ItemProtocol] = None
+
     @property
     def page_index(self) -> Optional[int]:
         if len(self.pages) == 0:
@@ -349,7 +352,7 @@ class CategoryElement:
         icon_char = item.char_index
         minimal_representation = item.minimal_representation
         assert icon_char is not None, "Item has no char index"
-        return cls(ctx=ctx, icon_char=icon_char, pages=pages, minimal_representation=minimal_representation)
+        return cls(ctx=ctx, icon_char=icon_char, pages=pages, minimal_representation=minimal_representation, item=item)
 
     @classmethod
     def from_item_content(cls, ctx: Context, item: ItemProtocol, count_to_char: dict[int,int]) -> Iterable[Page]:
@@ -364,7 +367,7 @@ class CategoryElement:
         on_one_page = len(crafts) + len(furnaces) <= 1
         
         item_name = item.minimal_representation["components"]["minecraft:item_name"]
-        item_name = json.loads(item_name)
+        item_name = deepcopy(item_name)
         item_name["font"] = f"{NAMESPACE}:medium_font"
         item_name["color"] = "black"
 
@@ -407,8 +410,12 @@ class CategoryElement:
                 yield Page(ctx=ctx, content=content)
 
     def to_pages(self, ctx: Context) -> Iterable[Page]:
+        first = True
         for page in self.pages:
             page.page_index = ctx.meta["guide_index"]()
+            if self.item is not None and first:
+                first = False
+                self.item.page_index = page.page_index
             yield page
 
 @dataclass
@@ -434,13 +441,13 @@ class CategoryElementRender:
             "text": char_item,
             "font": self.page_font,
             "color": "white",
-            "hoverEvent": {
+            "hover_event": {
                 "action": "show_item",
-                "contents": self.category_element.minimal_representation,
+                **self.category_element.minimal_representation,
             },
-            "clickEvent": {
+            "click_event": {
                 "action": "change_page",
-                "value": f"{self.category_element.pages[0].page_index}",
+                "page": self.category_element.pages[0].page_index,
             },
         }
             
@@ -517,13 +524,13 @@ class CategoryRender:
             "text": char_item,
             "font": self.page_font,
             "color": "white",
-            "hoverEvent": {
+            "hover_event": {
                 "action": "show_text",
                 "contents": {"translate": self.category.name[0]},
             },
-            "clickEvent": {
+            "click_event": {
                 "action": "change_page",
-                "value": f"{self.category.page_index}",
+                "page": self.category.page_index,
             },
         }
 
@@ -807,14 +814,14 @@ class Guide:
         self.add_items_to_font(*[i for i in VanillaItem.iter_values(self.ctx) if i.id != "minecraft:air"])
 
 
-        content : list[str] = []
+        content : list[MinecraftTextComponent] = []
         pages = list(self.to_pages())
         for page in pages:
             text_component = convert_text_component(page.to_text_component())
-            content.append(json.dumps(text_component))
+            content.append(text_component)
         self.create_modifier(content)
 
-    def create_modifier(self, pages: list[str]):
+    def create_modifier(self, pages: list[MinecraftTextComponent]):
         item_modifier = ItemModifier({
             "function": "minecraft:set_components",
             "components": {

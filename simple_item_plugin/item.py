@@ -147,8 +147,8 @@ class Item(Registry):
         return {
             "id": self.base_item,
             "components": {
-                "minecraft:item_name": json.dumps(self.get_item_name()),
-                "minecraft:lore": [json.dumps(lore) for lore in self.create_lore()],
+                "minecraft:item_name": self.get_item_name(),
+                "minecraft:lore": self.create_lore(),
             }
         }
     
