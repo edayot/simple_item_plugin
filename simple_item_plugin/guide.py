@@ -18,7 +18,7 @@ def guide(ctx: Context, opts: SimpleItemPluginOptions):
     if not opts.generate_guide:
         return
     with ctx.generate.draft() as draft:
-        if not opts.disable_guide_cache:
+        if not opts.disable_guide_cache and False:
             draft.cache("guide", "guide")
         Guide(ctx, draft, opts).gen()
 
@@ -351,7 +351,7 @@ class CategoryElement:
         pages = list(cls.from_item_content(ctx, item, count_to_char))
         icon_char = item.char_index
         minimal_representation = item.minimal_representation
-        assert icon_char is not None, "Item has no char index"
+        assert icon_char is not None, f"Item {item.id} has no char index"
         return cls(ctx=ctx, icon_char=icon_char, pages=pages, minimal_representation=minimal_representation, item=item)
 
     @classmethod
@@ -388,11 +388,19 @@ class CategoryElement:
             elif isinstance(craft, NBTSmelting):
                 content.append(NBTSmeltingRender(recipe=craft, count_to_char=count_to_char))
             
-        content.append({
-            "translate": description[0],
-            "color":"black",
-            "fallback": description[1].get(Lang.en_us, "No description")
-        })
+        if len(description) > 2:
+            content.append({
+                "translate": description[0],
+                "color":"black",
+                "fallback": description[1].get(Lang.en_us, "No description"),
+                "with": description[2],
+            })
+        else:
+            content.append({
+                "translate": description[0],
+                "color":"black",
+                "fallback": description[1].get(Lang.en_us, "No description"),
+            })
         yield Page(ctx=ctx, content=content)
         
         if not on_one_page:
@@ -801,7 +809,7 @@ class Guide:
             *VanillaItem.iter_values(self.ctx)
         ]:
             item: ItemProtocol
-            render.add_item_task(item.to_model_resolver(), path_ctx=self.item_to_render(item))
+            render.add_item_task(item.to_model_resolver(self.ctx), path_ctx=self.item_to_render(item))
         render.run()
         for texture_path in self.ctx.assets.textures.match(f"{NAMESPACE}:render/**"):
             img: Image.Image = self.ctx.assets.textures[texture_path].image
@@ -829,7 +837,7 @@ class Guide:
                     "title": "Guide",
                     "author": "AirDox_",
                     "pages": pages,
-                    "resolved": True
+                    "resolved": False,
                 }
             }
         })

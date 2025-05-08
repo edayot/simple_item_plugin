@@ -28,7 +28,7 @@ class VanillaItem(Registry):
         return hash(self.id)
 
 
-    def to_nbt(self, i: int) -> Compound:
+    def to_nbt(self, ctx: Context, i: int) -> Compound:
         return Compound({"id": String(self.id), "Slot": Byte(i)})
 
     def result_command(self, count: int, type : str = "block", slot : int = 16) -> str:
@@ -51,7 +51,7 @@ class VanillaItem(Registry):
     def guide_description(self) -> Optional[TranslatedString]:
         return None
     
-    def to_model_resolver(self) -> ModelResolverItem:
+    def to_model_resolver(self, ctx: Context) -> ModelResolverItem:
         return ModelResolverItem(
             id=self.id,
         )
@@ -71,7 +71,7 @@ class ExternalItem(Registry):
     def __hash__(self) -> int:
         return hash(self.id)
     
-    def to_nbt(self, i: int) -> Compound:
+    def to_nbt(self, ctx: Context, i: int) -> Compound:
         # return the nbt tag of the item smithed id "SelectedItem.components."minecraft:custom_data".smithed.id"
         return Compound(
             {
@@ -122,7 +122,7 @@ class ExternalItem(Registry):
         else:
             raise ValueError(f"Invalid type {type}")
         
-    def to_model_resolver(self) -> ModelResolverItem:
+    def to_model_resolver(self, ctx: Context) -> ModelResolverItem:
         return ModelResolverItem(
             id=self.id,
             count=1,
@@ -176,7 +176,7 @@ execute
         smithed_recipe = {}
         for i, item_row in enumerate(self.items):
             row_check_list = [
-                x.to_nbt(i) if x is not None else air(i) for i, x in enumerate(item_row)
+                x.to_nbt(ctx, i) if x is not None else air(i) for i, x in enumerate(item_row)
             ]
             smithed_recipe[String(i)] = List[Compound](row_check_list)
 
@@ -271,7 +271,7 @@ class ShapelessRecipe:
 
         recipe = List[Compound]([])
         for i, (item, count) in enumerate(self.items):
-            nbt = item.to_nbt(i)
+            nbt = item.to_nbt(ctx, i)
             nbt["count"] = Int(count)
             del nbt["Slot"]
             recipe.append(nbt)
@@ -338,7 +338,7 @@ class NBTSmelting(Registry):
         return "smelting"
 
     def export_type(self, ctx: Context, type: str):
-        recipe = self.item.to_nbt(0)
+        recipe = self.item.to_nbt(ctx, 0)
         del recipe["Slot"]
         recipe = serialize_tag(recipe)
 
@@ -426,11 +426,11 @@ execute
             ctx.data.function_tags[function_tag_impl] = FunctionTag()
             ctx.data.function_tags[function_tag_impl].data["values"].append(function_path_calls)
         
-        block_nbt = self.block.to_nbt(0)
+        block_nbt = self.block.to_nbt(ctx, 0)
         del block_nbt["Slot"]
-        ingot_nbt = self.ingot.to_nbt(0)
+        ingot_nbt = self.ingot.to_nbt(ctx, 0)
         del ingot_nbt["Slot"]
-        nugget_nbt = self.nugget.to_nbt(0) if self.nugget is not None else None
+        nugget_nbt = self.nugget.to_nbt(ctx, 0) if self.nugget is not None else None
         if nugget_nbt is not None:
             del nugget_nbt["Slot"]
 

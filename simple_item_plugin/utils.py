@@ -1,6 +1,5 @@
 import random
 from beet import Context, Language, Generator
-from pydantic._internal._generics import PydanticGenericMetadata
 from simple_item_plugin.types import Lang, TranslatedString, NAMESPACE
 from typing import Union, Optional, Self, Iterable, Protocol, Any, runtime_checkable
 from pydantic import BaseModel
@@ -40,8 +39,15 @@ class SimpleItemPluginOptions(BaseModel):
     license_path: Optional[str] = None
     readme_path: Optional[str] = None
     items_on_first_page: bool = False
+    creator: Optional[str] = None
+    prefix_namespace_with_creator: bool = False
 
 
+
+def real_ctx(ctx: Union[Context, Generator]) -> Context:
+    if isinstance(ctx, Generator):
+        return ctx.ctx
+    return ctx
 
 
 
@@ -51,41 +57,56 @@ class Registry(BaseModel):
         protected_namespaces = ()
     id: str
     __soft_new__ = False
+
+    @classmethod
+    def _registry_bases_class(cls) -> set[type]:
+        res = []
+        res.append(cls)
+        for base in cls.__mro__:
+            res.append(base)
+            if base is Registry:
+                break
+        return set(res)
+    
+    @classmethod
+    def _registry_base_class(cls) -> type:
+        for base in cls.__mro__:
+            if Registry in base.__bases__:
+                return base
+        raise TypeError(f"{cls} is not a subclass of {Registry}")
+
     def export(self, ctx: Union[Context, Generator]) -> Self:
-        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        real_ctx.meta.setdefault("registry", {}).setdefault(self.__class__.__name__, {})
-        if self.__soft_new__ and self.id in real_ctx.meta["registry"][self.__class__.__name__]:
-            return real_ctx.meta["registry"][self.__class__.__name__][self.id]
-        assert self.id not in real_ctx.meta["registry"][self.__class__.__name__], f"Registry {self.id} already exists"
-        real_ctx.meta["registry"][self.__class__.__name__][self.id] = self
+        ctx = real_ctx(ctx)
+        bases_cls = self._registry_bases_class()
+        for base_cls in bases_cls:
+            ctx.meta.setdefault("registry", {}).setdefault(id(base_cls), {})
+            if self.__soft_new__ and self.id in ctx.meta["registry"][id(base_cls)]:
+                return ctx.meta["registry"][id(base_cls)][self.id]
+            assert self.id not in ctx.meta["registry"][id(base_cls)], f"Registry {self.id} already exists"
+            ctx.meta["registry"][id(base_cls)][self.id] = self
         return self
     
     @classmethod
-    def get(cls, ctx: Union[Context, Generator], id: str) -> Self:
-        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        real_ctx.meta.setdefault("registry", {}).setdefault(cls.__name__, {})
-        return real_ctx.meta["registry"][cls.__name__][id]
+    def get(cls, ctx: Union[Context, Generator], id_: str) -> Self:
+        ctx = real_ctx(ctx)
+        base_cls = cls._registry_base_class()
+        ctx.meta.setdefault("registry", {}).setdefault(id(base_cls), {})
+        return ctx.meta["registry"][id(base_cls)][id_]
     
     @classmethod
     def iter_items(cls, ctx: Union[Context, Generator]) -> Iterable[tuple[str, Self]]:
-        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        real_ctx.meta.setdefault("registry", {}).setdefault(cls.__name__, {})
-        return real_ctx.meta["registry"][cls.__name__].items()
+        ctx = real_ctx(ctx)
+        ctx.meta.setdefault("registry", {}).setdefault(id(cls._registry_base_class()), {})
+        return ctx.meta["registry"][id(cls._registry_base_class())].items()
     
     @classmethod
     def iter_values(cls, ctx: Union[Context, Generator]) -> Iterable[Self]:
-        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        real_ctx.meta.setdefault("registry", {}).setdefault(cls.__name__, {})
-        return real_ctx.meta["registry"][cls.__name__].values()
+        return list(v for _, v in cls.iter_items(ctx))
     
     @classmethod
     def iter_keys(cls, ctx: Union[Context, Generator]) -> Iterable[str]:
-        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        real_ctx.meta.setdefault("registry", {}).setdefault(cls.__name__, {})
-        return real_ctx.meta["registry"][cls.__name__].keys()
+        return list(k for k, _ in cls.iter_items(ctx))
         
-
-
 @runtime_checkable
 class ItemProtocol(Protocol):
     id: str
@@ -99,10 +120,10 @@ class ItemProtocol(Protocol):
     def minimal_representation(self) -> dict[str, Any]: raise NotImplementedError()
 
 
-    def to_nbt(self, i: int) -> Compound: raise NotImplementedError()
+    def to_nbt(self, ctx: Context, i: int) -> Compound: raise NotImplementedError()
 
     def result_command(self, count: int, type : str = "block", slot : int = 16) -> str: raise NotImplementedError()
 
-    def to_model_resolver(self) -> ModelResolverItem: raise NotImplementedError
+    def to_model_resolver(self, ctx: Context) -> ModelResolverItem: raise NotImplementedError
 
         

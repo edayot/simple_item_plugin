@@ -108,7 +108,7 @@ class Item(Registry):
     char_index: Optional[int] = None
     # the translation key, the
     item_name: TextComponent_base | TranslatedString
-    lore: list[TranslatedString] = field(default_factory=list)
+    lore: list[TranslatedString | Any] = field(default_factory=list)
 
     components_extra: dict[str, Any] = field(default_factory=dict)
 
@@ -130,8 +130,10 @@ class Item(Registry):
     def loot_table_path(self):
         return f"{NAMESPACE}:impl/items/{self.id}"
     
-    @property
-    def namespace_id(self):
+    def namespace_id(self, ctx: Context) -> str:
+        opts = ctx.validate("simple_item_plugin", SimpleItemPluginOptions)
+        if opts.prefix_namespace_with_creator:
+            return f"{opts.creator}:{NAMESPACE}/{self.id}"
         return f"{NAMESPACE}:{self.id}"
     
     @property
@@ -152,13 +154,13 @@ class Item(Registry):
             }
         }
     
-    def to_model_resolver(self) -> ModelResolverItem: 
+    def to_model_resolver(self, ctx: Context) -> ModelResolverItem: 
         return ModelResolverItem(
             id=self.id,
             count=1,
             components={
                 "minecraft:item_model": self.item_model,
-                "minecraft:custom_data": self.create_custom_data(),
+                "minecraft:custom_data": self.create_custom_data(ctx),
                 **self.components_extra,
             },
         )
@@ -198,7 +200,7 @@ class Item(Registry):
         else:
             raise ValueError(f"Invalid type {type}")
 
-    def to_nbt(self, i: int) -> Compound:
+    def to_nbt(self, ctx: Context, i: int) -> Compound:
         # return the nbt tag of the item smithed id "SelectedItem.components."minecraft:custom_data".smithed.id"
         return Compound(
             {
@@ -207,7 +209,7 @@ class Item(Registry):
                         "minecraft:custom_data": Compound(
                             {
                                 "smithed": Compound(
-                                    {"id": String(self.namespace_id)}
+                                    {"id": String(self.namespace_id(ctx))}
                                 )
                             }
                         )
@@ -229,21 +231,31 @@ class Item(Registry):
     def create_lore(self):
         lore = []
         if self.lore:
-            lore.append(*self.lore)
+            for i, lore_line in enumerate(self.lore):
+                if isinstance(lore_line, tuple):
+                    lore.append(
+                        {
+                            "translate": lore_line[0],
+                            "color": "gray",
+                            "italic": True,
+                        }
+                    )
+                else:
+                    lore.append(lore_line)
         lore.append({"translate": f"{NAMESPACE}.name", "color": "blue", "italic": True})
         return lore
 
-    def create_custom_data(self, ctx: Optional[Union[Context, Generator]] = None):
+    def create_custom_data(self, ctx: Union[Context, Generator]):
+        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
         res : dict[str, Any] = {
-            "smithed": {"id": self.namespace_id},
+            "smithed": {"id": self.namespace_id(real_ctx)},
         }
         if self.is_cookable:
-            if ctx:
-                real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
+            if real_ctx:
                 real_ctx.meta["required_deps"].add("nbtsmelting")
             res["nbt_smelting"] = 1
         if self.block_properties:
-            res["smithed"]["block"] = {"id": self.namespace_id}
+            res["smithed"]["block"] = {"id": self.namespace_id(real_ctx)}
         return res
 
     def create_custom_block(self, ctx: Union[Context, Generator]):
@@ -404,7 +416,7 @@ kill @s
             f"execute if entity @s[tag={NAMESPACE}.{self.id}] run function {destroy_function_id}"
         )
 
-    def set_components(self):
+    def set_components(self) -> list[dict[str, Any]]:
         res = []
         for key, value in self.components_extra.items():
             if key == "minecraft:custom_data":

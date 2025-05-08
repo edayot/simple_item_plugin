@@ -60,7 +60,7 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
         path = Guide.item_to_render(item)
         if not path in ctx.assets.textures:
             render = Render(ctx)
-            render.add_item_task(item.to_model_resolver(), path_ctx=path)
+            render.add_item_task(item.to_model_resolver(ctx), path_ctx=path)
             render.run()
         tex = ctx.assets.textures[path]
         ctx.data.extra["pack.png"] = tex

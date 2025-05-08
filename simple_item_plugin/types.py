@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Any
 
 class _NAMESPACE:
     id : str | None = None
@@ -43,7 +44,8 @@ class Rarity(Enum):
     epic = "magenta"
 
 
-TranslatedString = tuple[str, dict[Lang, str]]
+TranslatedStringSimple = tuple[str, dict[Lang, str]]
+TranslatedString = TranslatedStringSimple | tuple[str, dict[Lang, str], list[Any]]
 
 TextComponent_base = str | dict
 TextComponent = TextComponent_base | list[TextComponent_base]
