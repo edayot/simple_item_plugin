@@ -483,7 +483,7 @@ kill @s
         return {
             "translate": self.item_name[0],
             "color": "white",
-            "fallback": self.item_name[1][Lang.en_us],
+            "fallback": self.item_name[1].get(Lang.en_us, self.item_name[0]),
         }
 
     def create_assets(self, ctx: Union[Context, Generator]):
