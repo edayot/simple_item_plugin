@@ -416,6 +416,7 @@ class CategoryElement:
                     content.append(NBTSmeltingRender(recipe=recipe, count_to_char=count_to_char))
                 content.append("\n")
                 yield Page(ctx=ctx, content=content)
+        yield from item.additional_pages if item.additional_pages else []
 
     def to_pages(self, ctx: Context) -> Iterable[Page]:
         first = True

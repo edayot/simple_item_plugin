@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 from nbtlib import serialize_tag
 from nbtlib.tag import (
@@ -22,6 +23,8 @@ class VanillaItem(Registry):
     id: str
     page_index: Optional[int] = None
     char_index: Optional[int] = None
+
+    additional_pages: Optional[list[Any]] = None
 
     __soft_new__ = True
     def __hash__(self) -> int:
@@ -67,6 +70,8 @@ class ExternalItem(Registry):
     guide_description: Optional[TranslatedString] = None
     page_index: Optional[int] = None
     char_index: Optional[int] = None
+
+    additional_pages: Optional[list[Any]] = None
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -123,13 +128,9 @@ class ExternalItem(Registry):
             raise ValueError(f"Invalid type {type}")
         
     def to_model_resolver(self, ctx: Context) -> ModelResolverItem:
-        return ModelResolverItem(
-            id=self.id,
-            count=1,
-            components={
-                "minecraft:item_model": self.item_model,
-            }
-        )
+        item = deepcopy(self.minimal_representation)
+        item.setdefault("components", {}).setdefault("minecraft:item_model", self.item_model)
+        return ModelResolverItem.model_validate(item)
     
 
 ItemType = Union[ItemProtocol, None]

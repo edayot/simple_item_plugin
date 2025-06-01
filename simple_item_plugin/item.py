@@ -1,4 +1,7 @@
 from dataclasses import dataclass, field
+import typing
+if typing.TYPE_CHECKING:
+    from simple_item_plugin.guide import Page
 from simple_item_plugin.types import TextComponent, TextComponent_base, NAMESPACE, TranslatedString, Lang
 from beet import Context, FunctionTag, Function, ItemModel, LootTable, Model, Texture, ResourcePack, Generator
 from PIL import Image
@@ -121,6 +124,7 @@ class Item(Registry):
     mineral: Optional[Mineral] = None
 
     guide_description: Optional[TranslatedString] = None
+    additional_pages: Optional[list[Any]] = field(default_factory=list)
 
     @property
     def clear_texture_path(self):
@@ -349,14 +353,11 @@ execute
             return
         smithed_function_tag_id = f"custom_block_ext:event/on_place"
         internal_function_id = f"{NAMESPACE}:impl/custom_block_ext/on_place"
-        if smithed_function_tag_id not in ctx.data.function_tags:
-            ctx.data.function_tags[smithed_function_tag_id] = FunctionTag()
-        ctx.data.function_tags[smithed_function_tag_id].data["values"].append(
+        ctx.data.function_tags.setdefault(smithed_function_tag_id).add(
             f"#{NAMESPACE}:calls/custom_block_ext/on_place"
         )
 
-        if internal_function_id not in ctx.data.functions:
-            ctx.data.functions[internal_function_id] = Function("# @public\n\n")
+        ctx.data.functions.setdefault(internal_function_id, Function("# @public\n\n"))
         
         placement_code = f"setblock ~ ~ ~ {self.block_properties.base_block}"
         if self.block_properties.smart_waterlog:

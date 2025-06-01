@@ -112,6 +112,8 @@ class ItemProtocol(Protocol):
     id: str
     page_index: Optional[int] = None
     char_index: Optional[int] = None
+    
+    additional_pages: Optional[list[Any]] = None
 
     @property
     def guide_description(self) -> Optional[TranslatedString]: ...
