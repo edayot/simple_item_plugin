@@ -1,5 +1,6 @@
 
 from beet import Context, configurable, Function, TextFile
+from simple_item_plugin.crafting import ExternalItem, VanillaItem
 from simple_item_plugin.types import NAMESPACE, AUTHOR
 from simple_item_plugin.utils import export_translated_string, Lang, SimpleItemPluginOptions, logger
 from simple_item_plugin.guide import Guide, guide
@@ -56,7 +57,18 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
         json.dump(ctx.meta["simple_item_plugin"]["stable_cache"], f, indent=4)
 
     if opts.item_for_pack_png:
-        item = Item.get(ctx, opts.item_for_pack_png)
+        item = Item.get(
+            ctx, 
+            opts.item_for_pack_png, 
+            default=ExternalItem.get(
+                ctx, 
+                opts.item_for_pack_png, 
+                default=VanillaItem.get(ctx, opts.item_for_pack_png, default=None)
+            )
+        )
+        if item is None:
+            logger.warning(f"Item {opts.item_for_pack_png} not found, using default pack.png")
+            return
         path = Guide.item_to_render(item)
         if not path in ctx.assets.textures:
             render = Render(ctx)

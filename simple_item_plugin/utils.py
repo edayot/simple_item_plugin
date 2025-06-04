@@ -50,6 +50,7 @@ def real_ctx(ctx: Union[Context, Generator]) -> Context:
     return ctx
 
 
+_DEFAULT = object()
 
 class Registry(BaseModel):
     class Config: 
@@ -87,11 +88,13 @@ class Registry(BaseModel):
         return self
     
     @classmethod
-    def get(cls, ctx: Union[Context, Generator], id_: str) -> Self:
+    def get(cls, ctx: Union[Context, Generator], id_: str, *, default: object = _DEFAULT) -> Self:
         ctx = real_ctx(ctx)
         base_cls = cls._registry_base_class()
         ctx.meta.setdefault("registry", {}).setdefault(id(base_cls), {})
-        return ctx.meta["registry"][id(base_cls)][id_]
+        if default is _DEFAULT:
+            return ctx.meta["registry"][id(base_cls)][id_]
+        return ctx.meta["registry"][id(base_cls)].get(id_, default)
     
     @classmethod
     def iter_items(cls, ctx: Union[Context, Generator]) -> Iterable[tuple[str, Self]]:

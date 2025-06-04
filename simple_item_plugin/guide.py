@@ -18,7 +18,7 @@ def guide(ctx: Context, opts: SimpleItemPluginOptions):
     if not opts.generate_guide:
         return
     with ctx.generate.draft() as draft:
-        if not opts.disable_guide_cache and False:
+        if not opts.disable_guide_cache:
             draft.cache("guide", "guide")
         Guide(ctx, draft, opts).gen()
 
