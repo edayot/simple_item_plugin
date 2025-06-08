@@ -101,6 +101,10 @@ class BlockProperties(BaseModel):
 
     base_item_placed: Optional[str] = None
     item_model_placed: Optional[str] = None
+
+    @property
+    def base_block_tag(self):
+        return f"{NAMESPACE}.block.{self.base_block.replace("minecraft:", "")}"
     
 
 
@@ -351,6 +355,7 @@ execute
     def create_custom_block_placement(self, ctx: Union[Context, Generator]):
         if not self.block_properties:
             return
+        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
         smithed_function_tag_id = f"custom_block_ext:event/on_place"
         internal_function_id = f"{NAMESPACE}:impl/custom_block_ext/on_place"
         ctx.data.function_tags.setdefault(smithed_function_tag_id).add(
@@ -366,19 +371,45 @@ execute
         ctx.data.functions[internal_function_id].append(
             f"""
 execute
-    if data storage custom_block_ext:main {{blockApi:{{id:"{NAMESPACE}:{self.id}"}}}}
+    if data storage custom_block_ext:main {{blockApi:{{id:"{self.namespace_id(real_ctx)}"}}}}
     run function ./on_place/{self.id}:
+        scoreboard players set #facing {NAMESPACE}.math 0
+        execute if block ~ ~ ~ furnace[facing=north] run scoreboard players set #facing {NAMESPACE}.math 0
+        execute if block ~ ~ ~ furnace[facing=south] run scoreboard players set #facing {NAMESPACE}.math 1
+        execute if block ~ ~ ~ furnace[facing=east] run scoreboard players set #facing {NAMESPACE}.math 2
+        execute if block ~ ~ ~ furnace[facing=west] run scoreboard players set #facing {NAMESPACE}.math 3
         setblock ~ ~ ~ air
         {placement_code}
+
         execute 
-            align xyz positioned ~.5 ~.5 ~.5
+            if score #facing {NAMESPACE}.math matches 0 
             summon item_display
+            rotated 180 0 
+            align xyz positioned ~.5 ~.5 ~.5 
             run function ./on_place/{self.id}/place_entity
+        execute 
+            if score #facing {NAMESPACE}.math matches 1 
+            summon item_display
+            rotated 0 0 
+            align xyz positioned ~.5 ~.5 ~.5 
+            run function ./on_place/{self.id}/place_entity
+        execute 
+            if score #facing {NAMESPACE}.math matches 2 
+            summon item_display
+            rotated -90 0 align xyz positioned ~.5 ~.5 ~.5 
+            run function ./on_place/{self.id}/place_entity
+        execute 
+            if score #facing {NAMESPACE}.math matches 3 
+            summon item_display
+            rotated 90 0 
+            align xyz positioned ~.5 ~.5 ~.5 
+            run function ./on_place/{self.id}/place_entity
+
 
 prepend function ./on_place/{self.id}/place_entity:
     tag @s add {NAMESPACE}.{self.id}
     tag @s add {NAMESPACE}.block
-    tag @s add {NAMESPACE}.block.{self.block_properties.base_block.replace("minecraft:", "")}
+    tag @s add {self.block_properties.base_block_tag}
     tag @s add smithed.block
     tag @s add smithed.strict
     tag @s add smithed.entity
@@ -391,13 +422,14 @@ prepend function ./on_place/{self.id}/place_entity:
 
     data merge entity @s {{transformation:{{scale:[1.001f,1.001f,1.001f]}}}}
     data merge entity @s {{brightness:{{sky:10,block:15}}}}
+    tp @s ~ ~ ~ ~ ~
 """
         )
     
     def create_custom_block_destroy(self, ctx: Union[Context, Generator]):
         if not self.block_properties:
             return
-        destroy_function_id = f"{NAMESPACE}:impl/blocks/destroy/{self.id}"
+        destroy_function_id = f"{NAMESPACE}:impl/custom_block_ext/destroy/{self.id}"
         if destroy_function_id not in ctx.data.functions:
             ctx.data.functions[destroy_function_id] = Function()
         ctx.data.functions[destroy_function_id].prepend(f"""
@@ -407,15 +439,35 @@ execute
         loot spawn ~ ~ ~ loot {self.loot_table_path}
         kill @s
 
-kill @s
-
 """)
-        all_same_function_id = f"{NAMESPACE}:impl/blocks/destroy_{self.block_properties.base_block.replace('minecraft:', '')}"
+        ctx.data.functions[destroy_function_id].append("kill @s")
+        all_same_function_id = f"{NAMESPACE}:impl/custom_block_ext/destroy_{self.block_properties.base_block.replace('minecraft:', '')}"
         if all_same_function_id not in ctx.data.functions:
             ctx.data.functions[all_same_function_id] = Function()
         ctx.data.functions[all_same_function_id].append(
             f"execute if entity @s[tag={NAMESPACE}.{self.id}] run function {destroy_function_id}"
         )
+        real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
+        opts = real_ctx.validate("simple_item_plugin", SimpleItemPluginOptions)
+
+        predicate_path = f"{NAMESPACE}:block/destroy_{self.block_properties.base_block.replace('minecraft:', '')}"
+
+        ctx.data.functions.setdefault(opts.tick_function).prepend(f"""
+execute 
+    as @e[type=item_display,tag={self.block_properties.base_block_tag},predicate=!{predicate_path}] 
+    at @s
+    run function {all_same_function_id}
+""")
+        ctx.data.predicates.setdefault(predicate_path).data = {
+            "condition": "minecraft:location_check",
+            "predicate": {
+                "block": {
+                    "blocks": self.block_properties.base_block,
+                }
+            }
+        }
+
+
 
     def set_components(self) -> list[dict[str, Any]]:
         res = []

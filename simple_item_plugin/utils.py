@@ -41,7 +41,8 @@ class SimpleItemPluginOptions(BaseModel):
     items_on_first_page: bool = False
     creator: Optional[str] = None
     prefix_namespace_with_creator: bool = False
-
+    tick_function: str = f"impl/tick"
+    load_function: str = f"impl/load"
 
 
 def real_ctx(ctx: Union[Context, Generator]) -> Context:

@@ -35,6 +35,10 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
     if opts.readme_path:
         path = pathlib.Path(opts.readme_path)
         ctx.data.extra[path.name] = TextFile(open(path, "r").read())
+
+    ctx.data.functions.setdefault(opts.load_function).prepend(f"scoreboard objectives add {NAMESPACE}.math dummy")
+    
+
     yield
     ctx.require(guide)
     if opts.add_give_all_function:
