@@ -3,7 +3,7 @@ import typing
 if typing.TYPE_CHECKING:
     from simple_item_plugin.guide import Page
 from simple_item_plugin.types import TextComponent, TextComponent_base, NAMESPACE, TranslatedString, Lang
-from beet import Context, FunctionTag, Function, ItemModel, LootTable, Model, Texture, ResourcePack, Generator
+from beet import Context, EntityTypeTag, FunctionTag, Function, ItemModel, LootTable, Model, Texture, ResourcePack, Generator
 from PIL import Image
 from typing import Any, Optional, TYPE_CHECKING, Union, Self
 from typing_extensions import TypedDict, NotRequired, Literal, Optional
@@ -101,6 +101,7 @@ class BlockProperties(BaseModel):
 
     base_item_placed: Optional[str] = None
     item_model_placed: Optional[str] = None
+    entity_type: Optional[str] = "item_display"
 
     @property
     def base_block_tag(self):
@@ -368,6 +369,25 @@ execute
         if self.block_properties.smart_waterlog:
             placement_code = f"setblock ~ ~ ~ {self.block_properties.base_block}[waterlogged=false]"
 
+        entity_type = self.block_properties.entity_type
+
+        item_display_placement = f"""
+    data modify entity @s item set value {{
+        id:"{self.block_properties.base_item_placed or self.base_item}",
+        count:1,
+        components:{{"minecraft:item_model":"{self.block_properties.item_model_placed or self.item_model}"}}
+    }}
+
+    data merge entity @s {{transformation:{{scale:[1.001f,1.001f,1.001f]}}}}
+    data merge entity @s {{brightness:{{sky:10,block:15}}}}
+"""
+
+        post_placement = ""
+        if entity_type == "item_display":
+            post_placement = item_display_placement
+        elif entity_type == "marker":
+            post_placement = ""
+
         ctx.data.functions[internal_function_id].append(
             f"""
 execute
@@ -383,24 +403,24 @@ execute
 
         execute 
             if score #facing {NAMESPACE}.math matches 0 
-            summon item_display
+            summon {entity_type}
             rotated 180 0 
             align xyz positioned ~.5 ~.5 ~.5 
             run function ./on_place/{self.id}/place_entity
         execute 
             if score #facing {NAMESPACE}.math matches 1 
-            summon item_display
+            summon {entity_type}
             rotated 0 0 
             align xyz positioned ~.5 ~.5 ~.5 
             run function ./on_place/{self.id}/place_entity
         execute 
             if score #facing {NAMESPACE}.math matches 2 
-            summon item_display
+            summon {entity_type}
             rotated -90 0 align xyz positioned ~.5 ~.5 ~.5 
             run function ./on_place/{self.id}/place_entity
         execute 
             if score #facing {NAMESPACE}.math matches 3 
-            summon item_display
+            summon {entity_type}
             rotated 90 0 
             align xyz positioned ~.5 ~.5 ~.5 
             run function ./on_place/{self.id}/place_entity
@@ -414,14 +434,7 @@ prepend function ./on_place/{self.id}/place_entity:
     tag @s add smithed.strict
     tag @s add smithed.entity
 
-    data modify entity @s item set value {{
-        id:"{self.block_properties.base_item_placed or self.base_item}",
-        count:1,
-        components:{{"minecraft:item_model":"{self.block_properties.item_model_placed or self.item_model}"}}
-    }}
-
-    data merge entity @s {{transformation:{{scale:[1.001f,1.001f,1.001f]}}}}
-    data merge entity @s {{brightness:{{sky:10,block:15}}}}
+{post_placement}
     tp @s ~ ~ ~ ~ ~
 """
         )
@@ -452,9 +465,16 @@ execute
 
         predicate_path = f"{NAMESPACE}:block/destroy_{self.block_properties.base_block.replace('minecraft:', '')}"
 
+        ctx.data.entity_type_tags.setdefault(f"{NAMESPACE}:impl/block_destroy").append(EntityTypeTag({
+            "values": [
+                "marker",
+                "item_display"
+            ]
+        }))
+
         ctx.data.functions.setdefault(opts.tick_function).prepend(f"""
 execute 
-    as @e[type=item_display,tag={self.block_properties.base_block_tag},predicate=!{predicate_path}] 
+    as @e[type=#{NAMESPACE}:impl/block_destroy, tag={self.block_properties.base_block_tag},predicate=!{predicate_path}] 
     at @s
     run function {all_same_function_id}
 """)
