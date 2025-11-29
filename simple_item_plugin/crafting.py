@@ -10,6 +10,7 @@ from nbtlib.tag import (
 )
 from typing import Any, Literal, Union, Tuple, Optional, Generator, Callable
 from beet import Context, Function, FunctionTag, Recipe
+from pydantic import BaseModel
 from simple_item_plugin.item import Item
 from simple_item_plugin.types import NAMESPACE, TranslatedString
 from simple_item_plugin.utils import Registry, ItemProtocol
@@ -136,19 +137,29 @@ class ExternalItem(Registry):
 ItemType = Union[ItemProtocol, None]
 ItemLine = Tuple[ItemType, ItemType, ItemType]
 
+
+class ConditionalCrafting(BaseModel):
+    scoreboard: str
+    fake_player: str
+    value: int
+
 class ShapedRecipe(Registry):
     id: str = field(default_factory=lambda: str(hash(random.random())))
     items: Tuple[ItemLine, ItemLine, ItemLine]
     result: tuple[ItemProtocol, int]
     flags: list[str] = field(default_factory=lambda: [])
+    conditional_crafting: ConditionalCrafting | None = None
 
     def get_command(self, if_data_storage: str):
+        if_score = ""
+        if self.conditional_crafting is not None:
+            if_score = f"if score {self.conditional_crafting.fake_player} {self.conditional_crafting.scoreboard} matches {self.conditional_crafting.value}"
         if not self.flags:
             return f"""
 execute 
     store result score @s smithed.data 
     if entity @s[scores={{smithed.data=0}}] 
-    {if_data_storage}
+    {if_score} {if_data_storage}
     run {self.result[0].result_command(self.result[1])}
 """
         flags_command = f'data modify storage smithed.crafter:input flags set value {json.dumps(self.flags)}'
@@ -156,7 +167,7 @@ execute
         return f"""
 execute 
     if entity @s[scores={{smithed.data=0}}] 
-    {if_data_storage}
+    {if_score} {if_data_storage}
     run function {function_name}:
         {flags_command}
         {self.result[0].result_command(self.result[1])}
