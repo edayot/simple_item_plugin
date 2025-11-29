@@ -139,6 +139,9 @@ ItemLine = Tuple[ItemType, ItemType, ItemType]
 
 
 class ConditionalCrafting(BaseModel):
+    """
+    Allow craft if this condition is met.
+    """
     scoreboard: str
     fake_player: str
     value: int
