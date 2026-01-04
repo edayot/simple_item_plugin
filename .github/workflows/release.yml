@@ -23,13 +23,13 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.14'
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --group dev
       - name: Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -39,22 +39,16 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "action@github.com"
 
-          # Bump version in pyproject.toml using python-semantic-release
-          if [ "$VERSION_BUMP" = "patch" ]; then
-            uv run semantic-release -v version --patch
-          fi
-          if [ "$VERSION_BUMP" = "minor" ]; then
-            uv run semantic-release -v version --minor
-          fi
-          if [ "$VERSION_BUMP" = "major" ]; then
-            uv run semantic-release -v version --major
-          fi
 
-          # Build and publish to PyPI
+          uv version --bump $VERSION_BUMP
           uv build
-          uv publish --token "$PYPI_TOKEN"
 
-          
-          
+          git add pyproject.toml
+          git commit -m "$(uv version --short)"
+          git tag -a $(uv version --short) -m "$(uv version --short)"
+          git push origin $(uv version --short)
+          git push origin master
+
+          uv publish --username __token__ --password $PYPI_TOKEN
           
           
