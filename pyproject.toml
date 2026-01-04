@@ -1,24 +1,13 @@
-[tool.poetry]
+[project]
 name = "simple-item-plugin"
 version = "0.29.0"
-description = ""
-authors = ["edayot <pro.e.dayot@gmail.com>"]
-license = "MIT"
+description = "Add your description here"
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.12"
-bolt = ">=0.48.0"
-model-resolver = ">=1.1.0"
-beet = ">=0.108.3"
-weld-deps = ">=0.8.0"
-mecha = ">=0.95.2"
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-
-[tool.pyright]
-typeCheckingMode = "basic"
+requires-python = ">=3.14"
+dependencies = [
+    "beet>=0.113.0b10",
+    "bolt>=0.50.0b5",
+    "mecha>=0.102.0b2",
+    "model-resolver>=1.13.0",
+    "weld-deps>=0.8.0",
+]
