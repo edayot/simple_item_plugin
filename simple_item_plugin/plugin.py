@@ -38,7 +38,6 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
 
     ctx.data.functions.setdefault(opts.load_function).prepend(f"scoreboard objectives add {NAMESPACE}.math dummy")
     
-
     yield
     ctx.require(guide)
     if opts.add_give_all_function:
@@ -48,6 +47,7 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
                 f"loot give @s loot {item.loot_table_path}"
             )
     ctx.require(versioning)
+    ctx.require("beet.contrib.render")
     ctx.require(mecha)
 
     opts_weld_deps = ctx.validate("weld_deps", WeldDepsConfig)
@@ -57,8 +57,9 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
         ]:
             logger.warning(f"Required dep {dep} not found in weld_deps")
 
-    with open(stable_cache, "w") as f:
-        json.dump(ctx.meta["simple_item_plugin"]["stable_cache"], f, indent=4)
+    if ctx.meta["simple_item_plugin"]["stable_cache"]:
+        with open(stable_cache, "w") as f:
+            json.dump(ctx.meta["simple_item_plugin"]["stable_cache"], f, indent=4)
 
     if opts.item_for_pack_png:
         item = Item.get(

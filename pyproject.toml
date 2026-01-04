@@ -11,3 +11,10 @@ dependencies = [
     "model-resolver>=1.13.0",
     "weld-deps>=0.8.0",
 ]
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["simple_item_plugin"]
