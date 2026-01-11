@@ -49,6 +49,8 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
     ctx.require(versioning)
     ctx.require("beet.contrib.render")
     ctx.require(mecha)
+    ctx.require("weld_deps.contrib.mecha_auto_include.pipeline")
+    ctx.require("weld_deps")
 
     opts_weld_deps = ctx.validate("weld_deps", WeldDepsConfig)
     for dep in ctx.meta["required_deps"]:
