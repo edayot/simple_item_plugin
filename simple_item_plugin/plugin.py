@@ -6,8 +6,8 @@ from simple_item_plugin.utils import export_translated_string, Lang, SimpleItemP
 from simple_item_plugin.guide import Guide, guide
 from simple_item_plugin.versioning import beet_default as versioning
 from simple_item_plugin.item import Item
+from weld_deps import ResolvedDep
 from mecha import beet_default as mecha
-from weld_deps.main import DepsConfig as WeldDepsConfig
 import json
 import pathlib
 from model_resolver import Render
@@ -52,11 +52,10 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
     ctx.require("weld_deps.contrib.mecha_auto_include.pipeline")
     ctx.require("weld_deps")
 
-    opts_weld_deps = ctx.validate("weld_deps", WeldDepsConfig)
+    resolved_deps: list[ResolvedDep] = ctx.meta.get("weld_deps_resolved_deps", [])
+    ids = [x.id for x in resolved_deps]
     for dep in ctx.meta["required_deps"]:
-        if not dep in [
-            k for k, _ in opts_weld_deps.deps_dict()
-        ]:
+        if not dep in ids:
             logger.warning(f"Required dep {dep} not found in weld_deps")
 
     if ctx.meta["simple_item_plugin"]["stable_cache"]:
