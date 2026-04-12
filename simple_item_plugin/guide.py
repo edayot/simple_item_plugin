@@ -1,14 +1,14 @@
 
 from copy import deepcopy
 from simple_item_plugin.item import ItemGroup, Item
-from simple_item_plugin.crafting import ShapedRecipe, NBTSmelting, VanillaItem, ExternalItem
+from simple_item_plugin.crafting import RecipeItemTag, ShapedRecipe, NBTSmelting, VanillaItem, ExternalItem
 from simple_item_plugin.utils import TranslatedString, ItemProtocol, NAMESPACE, Lang, export_translated_string, SimpleItemPluginOptions
 from typing import Any, Callable, Protocol, Literal, Optional, NamedTuple, Iterable, TypeVar
 import json
 from dataclasses import dataclass, field
 from beet import Context, Generator, Texture, Font, ItemModifier, configurable
 from PIL import Image, ImageDraw, ImageFont
-from model_resolver import Render
+from model_resolver.render import Render
 from itertools import islice
 import pathlib
 
@@ -638,6 +638,8 @@ class Guide:
 
     @staticmethod
     def item_to_render(item: ItemProtocol) -> str:
+        if isinstance(item, RecipeItemTag):
+            return f"{NAMESPACE}:render/{item.first_item.replace(':', '/')}"
         return f"{NAMESPACE}:render/{item.id.replace(':', '/')}"
     
     def add_big_and_medium_font(self):
@@ -737,7 +739,7 @@ class Guide:
                 continue
             render_path = self.item_to_render(item)
             if not render_path in self.draft.assets.textures:
-                raise Exception(f"Texture {render_path} not found")
+                raise Exception(f"Texture {render_path} not found for item {item}")
             item.char_index = self.get_new_char()
             for i in range(3):
                 char_item = f"\\u{item.char_index+i:04x}".encode().decode(
@@ -807,7 +809,8 @@ class Guide:
         for item in [
             *Item.iter_values(self.ctx), 
             *ExternalItem.iter_values(self.ctx), 
-            *VanillaItem.iter_values(self.ctx)
+            *VanillaItem.iter_values(self.ctx),
+            *RecipeItemTag.iter_values(self.ctx),
         ]:
             item: ItemProtocol
             render.add_item_task(item.to_model_resolver(self.ctx), path_ctx=self.item_to_render(item))
@@ -820,6 +823,7 @@ class Guide:
         self.create_font()
         self.add_items_to_font(*Item.iter_values(self.ctx))
         self.add_items_to_font(*ExternalItem.iter_values(self.ctx))
+        self.add_items_to_font(*RecipeItemTag.iter_values(self.ctx))
         self.add_items_to_font(*[i for i in VanillaItem.iter_values(self.ctx) if i.id != "minecraft:air"])
 
 

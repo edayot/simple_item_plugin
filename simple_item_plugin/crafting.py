@@ -1,5 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
+from model_resolver.utils import PackGetterV2
 from nbtlib import serialize_tag
 from nbtlib.tag import (
     String,
@@ -8,15 +9,17 @@ from nbtlib.tag import (
     Int,
     Byte,
 )
-from typing import Any, Literal, Union, Tuple, Optional, Generator, Callable
+from typing import TYPE_CHECKING, Any, Literal, Self, Union, Tuple, Optional, Generator, Callable
 from beet import Context, Function, FunctionTag, Recipe
 from pydantic import BaseModel
 from simple_item_plugin.item import Item
 from simple_item_plugin.types import NAMESPACE, TranslatedString
 from simple_item_plugin.utils import Registry, ItemProtocol
-from model_resolver import Item as ModelResolverItem
+from model_resolver.item_model.item import Item as ModelResolverItem
 import json
 import random
+from model_resolver.item_model.data_component_predicate import iter_tagged_id
+from beet import Generator as BeetGenerator
 
 
 
@@ -67,8 +70,8 @@ class ExternalItem(Registry):
     loot_table_path: str
     item_model: str
     base_item: str = "minecraft:diamond"
-    minimal_representation: dict[str, Any]
-    guide_description: Optional[TranslatedString] = None
+    minimal_representation: dict[str, Any] # type: ignore
+    guide_description: Optional[TranslatedString] = None # type: ignore
     page_index: Optional[int] = None
     char_index: Optional[int] = None
 
@@ -134,6 +137,49 @@ class ExternalItem(Registry):
         return ModelResolverItem.model_validate(item)
     
 
+class RecipeItemTag(Registry):
+    id: str
+    page_index: Optional[int] = None
+    char_index: Optional[int] = None
+    
+    additional_pages: Optional[list[Any]] = None
+
+    first_item: str = ""
+
+    def export(self, ctx: Context | BeetGenerator) -> Self:
+        self.first_item = self.get_first_item(ctx)
+        return super().export(ctx)
+
+    def get_first_item(self, ctx: Context | BeetGenerator) -> str:
+        real_ctx = ctx if isinstance(ctx, Context) else ctx.ctx
+        getter = PackGetterV2.from_context(real_ctx)
+        items = list(iter_tagged_id(self.tagged_id, getter.data.item_tags))
+        return items[0]
+
+    @property
+    def tagged_id(self):
+        return "#" + self.id
+
+    @property
+    def guide_description(self) -> Optional[TranslatedString]: ...
+
+    @property
+    def minimal_representation(self) -> dict[str, Any]:
+        res = {
+            "id": self.first_item
+        }
+        return res
+
+    def to_nbt(self, ctx: Context, i: int) -> Compound:
+        return Compound({"item_tag": List[String]([String(self.tagged_id)]), "Slot": Byte(i)})
+    
+    def result_command(self, count: int, type : str = "block", slot : int = 16) -> str: 
+        raise ValueError(f"ItemTag cannot be used as a result in a crafting recipe")
+
+    def to_model_resolver(self, ctx: Context) -> ModelResolverItem: 
+        return ModelResolverItem(id=self.first_item or "minecraft:air")
+
+
 ItemType = Union[ItemProtocol, None]
 ItemLine = Tuple[ItemType, ItemType, ItemType]
 
@@ -185,7 +231,7 @@ execute
         super().export(ctx)
         ctx.meta["required_deps"].add("crafter")
         if is_external_recipe:
-            return
+            return self
         air = lambda i: Compound({"id": String("minecraft:air"), "Slot": Byte(i)})
 
         smithed_recipe = {}
@@ -223,6 +269,7 @@ execute
             )
 
         ctx.data.functions[function_path].append(self.get_command(if_data_storage))
+        return self
 
 
 @dataclass
@@ -341,7 +388,7 @@ class NBTSmelting(Registry):
         """
         for type in self.types:
             self.export_type(ctx, type)
-        super().export(ctx)
+        return super().export(ctx)
 
     def type_to_crafting_type(self, type: str):
         if type == "furnace":

@@ -77,7 +77,7 @@ class Registry(BaseModel):
                 return base
         raise TypeError(f"{cls} is not a subclass of {Registry}")
 
-    def export(self, ctx: Union[Context, Generator]) -> Self:
+    def export(self, ctx: Union[Context, Generator], *args,  **kwargs) -> Self:
         ctx = real_ctx(ctx)
         bases_cls = self._registry_bases_class()
         for base_cls in bases_cls:
