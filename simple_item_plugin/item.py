@@ -18,6 +18,7 @@ from pydantic import BaseModel
 import logging
 from copy import deepcopy
 from enum import Enum
+from weld_deps.contrib.mecha_auto_include import PluginDepsHolder
 
 logger = logging.getLogger("simple_item_plugin")
 
@@ -261,7 +262,7 @@ class Item(Registry):
         }
         if self.is_cookable:
             if real_ctx:
-                real_ctx.meta["required_deps"].add("nbtsmelting")
+                PluginDepsHolder.add_plugin_deps("nbtsmelting")
             res["nbt_smelting"] = 1
         if self.block_properties:
             res["smithed"]["block"] = {"id": self.namespace_id(real_ctx)}
@@ -271,8 +272,7 @@ class Item(Registry):
         if not self.block_properties:
             return
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        deps_needed = ["custom_block_ext"]
-        real_ctx.meta["required_deps"].update(deps_needed)
+        PluginDepsHolder.add_plugin_deps("custom_block_ext")
 
         self.create_custom_block_placement(ctx)
         self.create_custom_block_destroy(ctx)
@@ -283,7 +283,10 @@ class Item(Registry):
             return
         deps_needed = ["%20chunk_scan.ores", "chunk_scan"]
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
-        real_ctx.meta["required_deps"].update(deps_needed)
+        PluginDepsHolder.add_plugin_deps("%20chunk_scan.ores")
+        PluginDepsHolder.add_plugin_deps("chunk_scan")
+        
+
         
         registry = f"{NAMESPACE}:impl/load_worldgen"
         registry_call = f"{NAMESPACE}:impl/calls/load_worldgen"

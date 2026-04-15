@@ -19,3 +19,7 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["simple_item_plugin"]
 
+
+
+[tool.uv.sources]
+weld-deps = { path = "../weld-deps", editable = true }

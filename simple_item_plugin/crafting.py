@@ -20,6 +20,7 @@ import json
 import random
 from model_resolver.item_model.data_component_predicate import iter_tagged_id
 from beet import Generator as BeetGenerator
+from weld_deps.contrib.mecha_auto_include import PluginDepsHolder
 
 
 
@@ -229,7 +230,7 @@ execute
         if is_external_recipe is True, the recipe will only be added to the registry and not to the function.
         """
         super().export(ctx)
-        ctx.meta["required_deps"].add("crafter")
+        PluginDepsHolder.add_plugin_deps("crafter")
         if is_external_recipe:
             return self
         air = lambda i: Compound({"id": String("minecraft:air"), "Slot": Byte(i)})
@@ -327,7 +328,7 @@ class ShapelessRecipe:
         """
         This function export the smithed crafter recipes to the ctx variable.
         """
-        ctx.meta["required_deps"].add("crafter")
+        PluginDepsHolder.add_plugin_deps("crafter")
         self.shaped_recipe(ctx)
         global_count = len(self.items)
 

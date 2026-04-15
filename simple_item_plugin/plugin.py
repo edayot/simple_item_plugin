@@ -6,11 +6,10 @@ from simple_item_plugin.utils import export_translated_string, Lang, SimpleItemP
 from simple_item_plugin.guide import Guide, guide
 from simple_item_plugin.versioning import beet_default as versioning
 from simple_item_plugin.item import Item
-from weld_deps import ResolvedDep
 from mecha import beet_default as mecha
 import json
 import pathlib
-from model_resolver import Render
+from model_resolver.render import Render
 
 
 
@@ -28,7 +27,6 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
         for word in ctx.project_name.split("_")
     ])
     export_translated_string(ctx, (f"{NAMESPACE}.name", {Lang.en_us: project_name, Lang.fr_fr: project_name}))
-    ctx.meta.setdefault("required_deps", set())
     if opts.license_path:
         path = pathlib.Path(opts.license_path)
         ctx.data.extra[path.name] = TextFile(open(path, "r").read())
@@ -52,11 +50,6 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
     ctx.require("weld_deps.contrib.mecha_auto_include.pipeline")
     ctx.require("weld_deps")
 
-    resolved_deps: list[ResolvedDep] = ctx.meta.get("weld_deps_resolved_deps", [])
-    ids = [x.id for x in resolved_deps]
-    for dep in ctx.meta["required_deps"]:
-        if not dep in ids:
-            logger.warning(f"Required dep {dep} not found in weld_deps")
 
     if ctx.meta["simple_item_plugin"]["stable_cache"]:
         with open(stable_cache, "w") as f:
