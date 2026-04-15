@@ -195,7 +195,7 @@ class ConditionalCrafting(BaseModel):
 
 class ShapedRecipe(Registry):
     id: str = field(default_factory=lambda: str(hash(random.random())))
-    items: Tuple[ItemLine, ItemLine, ItemLine]
+    items: Tuple[ItemLine, ItemLine, ItemLine] | Tuple[ItemLine, ItemLine] | Tuple[ItemLine,]
     result: tuple[ItemProtocol, int]
     flags: list[str] = field(default_factory=lambda: [])
     conditional_crafting: ConditionalCrafting | None = None
