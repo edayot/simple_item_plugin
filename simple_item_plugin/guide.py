@@ -239,13 +239,14 @@ class ShapedRecipeRender:
             "color":"white"
         }
         for i in range(3):
-            if i>= len(self.recipe.items): continue
             assert i in (0, 1, 2)
             for partPosition in ("up", "down"):
                 yield {"text":self.space_before_line,"font":self.page_font,"color":"white"}
                 for j in range(3):
-                    if j>= len(self.recipe.items[i]): continue
-                    item = self.recipe.items[i][j]
+                    if i >= len(self.recipe.items) or j >= len(self.recipe.items[i]):
+                        item = None
+                    else:
+                        item = self.recipe.items[i][j]
                     yield ItemRender(
                         item=item,
                         is_big=False,
