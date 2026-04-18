@@ -97,12 +97,28 @@ class WorldGenerationParams(BaseModel):
 class BlockProperties(BaseModel):
     base_block: str
     smart_waterlog: Optional[bool] = False
+    block_states: Optional[dict[str, str]] = None
     all_same_faces: Optional[bool] = True
     world_generation: Optional[list[WorldGenerationParams]] = None
+    creative_block: Optional[bool] = None
 
     base_item_placed: Optional[str] = None
     item_model_placed: Optional[str] = None
     entity_type: Optional[str] = "item_display"
+
+    def get_base_block(self):
+        if self.smart_waterlog:
+            if not self.block_states:
+                self.block_states = {}
+            self.block_states["waterlogged"] = "true"
+        res = self.base_block
+        if self.block_states:
+            res = res + "["
+            for key, value in self.block_states.items():
+                res = res + key + "=" + value + ","
+            res = res + "]"
+        return res
+
 
     @property
     def base_block_tag(self):
@@ -368,9 +384,7 @@ execute
 
         ctx.data.functions.setdefault(internal_function_id, Function("# @public\n\n"))
         
-        placement_code = f"setblock ~ ~ ~ {self.block_properties.base_block}"
-        if self.block_properties.smart_waterlog:
-            placement_code = f"setblock ~ ~ ~ {self.block_properties.base_block}[waterlogged=false]"
+        placement_code = f"setblock ~ ~ ~ {self.block_properties.get_base_block()}"
 
         entity_type = self.block_properties.entity_type
 
@@ -382,7 +396,6 @@ execute
     }}
 
     data merge entity @s {{transformation:{{scale:[1.001f,1.001f,1.001f]}}}}
-    data merge entity @s {{brightness:{{sky:10,block:15}}}}
 """
 
         post_placement = ""
@@ -452,7 +465,7 @@ prepend function ./on_place/{self.id}/place_entity:
 execute
     as @e[type=item,nbt={{Item:{{id:"{self.block_properties.base_block}",count:1}}}},limit=1,sort=nearest,distance=..3]
     run function ~/spawn_item:
-        loot spawn ~ ~ ~ loot {self.loot_table_path}
+        {f"loot spawn ~ ~ ~ loot {self.loot_table_path}" if not self.block_properties.creative_block else ""}
         kill @s
 
 """)
