@@ -92,6 +92,7 @@ def resolve_advancement(advancement: Advancement, opts: VersioningOptions):
       conditions, we attempt to append our version_check OR edit the existing
       check for the correct scoreholder_part (TODO: make this clearer probably).
     """
+    return
 
     criteria = advancement.data["criteria"]
     for requirement in criteria.values():

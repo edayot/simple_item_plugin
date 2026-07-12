@@ -44,7 +44,7 @@ def beet_default(ctx: Context, opts: SimpleItemPluginOptions):
             ctx.data.functions[f"{NAMESPACE}:impl/give_all"].append(
                 f"loot give @s loot {item.loot_table_path}"
             )
-    ctx.require(versioning)
+    # ctx.require(versioning)
     ctx.require("beet.contrib.render")
     ctx.require(mecha)
     ctx.require("weld_deps.contrib.mecha_auto_include.pipeline")

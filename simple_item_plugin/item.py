@@ -101,6 +101,8 @@ class BlockProperties(BaseModel):
     all_same_faces: Optional[bool] = True
     world_generation: Optional[list[WorldGenerationParams]] = None
     creative_block: Optional[bool] = None
+    placement_code: bool = True
+    destroy_code: bool = True
 
     base_item_placed: Optional[str] = None
     item_model_placed: Optional[str] = None
@@ -375,6 +377,8 @@ execute
     def create_custom_block_placement(self, ctx: Union[Context, Generator]):
         if not self.block_properties:
             return
+        if not self.block_properties.placement_code:
+            return
         real_ctx = ctx.ctx if isinstance(ctx, Generator) else ctx
         smithed_function_tag_id = f"custom_block_ext:event/on_place"
         internal_function_id = f"{NAMESPACE}:impl/custom_block_ext/on_place"
@@ -457,6 +461,8 @@ prepend function ./on_place/{self.id}/place_entity:
     
     def create_custom_block_destroy(self, ctx: Union[Context, Generator]):
         if not self.block_properties:
+            return
+        if not self.block_properties.destroy_code:
             return
         destroy_function_id = f"{NAMESPACE}:impl/custom_block_ext/destroy/{self.id}"
         if destroy_function_id not in ctx.data.functions:
