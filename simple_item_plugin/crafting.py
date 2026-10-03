@@ -111,9 +111,9 @@ class ExternalItem(Registry):
                             {
                                 "type": "minecraft:loot_table",
                                 "value": loot_table_path,
-                                "functions": [
+                                "modifier": [
                                     {
-                                        "function": "minecraft:set_count",
+                                        "type": "minecraft:set_count",
                                         "count": count
                                     }
                                 ]
@@ -436,6 +436,7 @@ execute
                     "result": {
                         "id": self.item.base_item,
                     },
+                    "cookingtime": 200,
                 }
             )
 

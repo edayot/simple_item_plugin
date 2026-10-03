@@ -1,6 +1,6 @@
 from contextlib import suppress
 
-from beet import Advancement, Context, Function, FunctionTag, Generator
+from beet import Advancement, Context, Function, FunctionTag, Generator, LootTable, LootTableTag
 
 from .models import Versioning, VersioningOptions
 from .utils import call_if_version_match
@@ -74,6 +74,38 @@ def set_version(generate: Generator, opts: VersioningOptions):
         ),
     )
 
+def resolve_loot_tables(ctx: Context, opts: VersioningOptions):
+    query = ctx.query(match=opts.refactor.match, extend=LootTable)
+    if not LootTable in query:
+        return
+    for path, advancement in query[LootTable].keys():
+        resolve_loot_table(advancement, opts)
+        
+def resolve_loot_table(loot_table: LootTable, opts: VersioningOptions):
+    for pool in loot_table.data.get("pools", []):
+        conditions = []
+        if existing_condition := pool.get("condition", None):
+            conditions.append(existing_condition)
+
+        for name, number in opts.version.named_parts():
+            scoreholder_part = f"{opts.scoreholder}.{name}"
+            conditions.append({
+                "type": "minecraft:int_value_check",
+                "value": {
+                    "type": "minecraft:score",
+                    "target": {
+                        "type": "minecraft:fixed",
+                        "name": scoreholder_part,
+                    },
+                    "score": "load.status",
+                },
+                "test": number,
+            })
+        pool["condition"] = {
+            "type": "minecraft:all_of",
+            "terms": conditions
+        }
+
 
 def resolve_advancements(ctx: Context, opts: VersioningOptions):
     """Select packs that match refactor statement"""
@@ -83,6 +115,24 @@ def resolve_advancements(ctx: Context, opts: VersioningOptions):
         return
     for path, advancement in query[Advancement].keys():
         resolve_advancement(advancement, opts)
+
+
+def as_terms(player):
+    """The conditions already on a trigger field, which 26.3 stores as a single condition"""
+
+    if player is None:
+        return []
+    if isinstance(player, list):
+        return player
+    if player.get("type") == "minecraft:all_of":
+        return list(player["terms"])
+    return [player]
+
+
+def one_condition(terms):
+    """A trigger field holds one condition, so several of them become an all_of"""
+
+    return terms[0] if len(terms) == 1 else {"type": "minecraft:all_of", "terms": terms}
 
 
 def resolve_advancement(advancement: Advancement, opts: VersioningOptions):
@@ -96,12 +146,12 @@ def resolve_advancement(advancement: Advancement, opts: VersioningOptions):
     criteria = advancement.data["criteria"]
     for requirement in criteria.values():
         conditions = requirement.setdefault("conditions", {})
-        player_conditions = conditions.setdefault("player", [])
+        player_conditions = as_terms(conditions.get("player"))
 
         for name, number in opts.version.named_parts():
             scoreholder_part = f"{opts.scoreholder}.{name}"
             version_check = {
-                "condition": "minecraft:value_check",
+                "type": "minecraft:int_value_check",
                 "value": {
                     "type": "minecraft:score",
                     "target": {
@@ -110,20 +160,22 @@ def resolve_advancement(advancement: Advancement, opts: VersioningOptions):
                     },
                     "score": "load.status",
                 },
-                "range": number,
+                "test": number,
             }
 
             for cond in player_conditions:
                 with suppress(KeyError, TypeError):
                     if (
-                        cond["condition"] == "minecraft:value_check"
+                        cond["type"] == "minecraft:int_value_check"
                         and cond["value"]["target"]["name"] == scoreholder_part
                     ):
-                        cond["range"] = number
+                        cond["test"] = number
                         break
 
             else:  # only when there's no break
                 player_conditions.append(version_check)
+
+        conditions["player"] = one_condition(player_conditions)
 
 
 def enumerate_func(ctx: Context, opts: VersioningOptions) -> str:
@@ -238,5 +290,8 @@ def generate_load(ctx: Context):
         # Advancements get patched to "disable" if version check is **wrong**
         resolve = resolve_func(ctx, opts)
         resolve_advancements(ctx, opts)
+        
+
+        resolve_loot_tables(ctx, opts)
 
         load_tags(ctx, opts, dependencies, enumerate, resolve)

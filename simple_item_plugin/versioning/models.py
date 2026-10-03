@@ -62,8 +62,9 @@ class VersioningOptions(ContextualModel):
         implementation_prefix: str = "{{ project_id }}:v{{ version }}/"
         version_check_path: str = "v{{ version }}/calls"
         tag_path: str = ""
+        loot_table_tag_path: str = ""
 
-    scoreholder: str = "#{{ project_id }}"
+    scoreholder: str = "#{{ project_name }}"
     schema_: list[str] = Field(default=["major", "minor", "patch"], alias="schema")
     scheduled_paths: ListOption[str] = ListOption(__root__=["impl/tick"])
     version: Version | None = None
@@ -106,34 +107,19 @@ class VersioningOptions(ContextualModel):
             case _ as val:
                 return val
 
+    @model_validator(mode="before")
     @classmethod
-    def _render_any(cls, val: Any, all_values: JsonDict) -> Any:
-        """Recursively render strings inside nested structures and models, in-place."""
-        # Handle nested Pydantic models by walking their fields
-        if isinstance(val, BaseModel):
-            for field_name in val.model_fields:
-                current = getattr(val, field_name)
-                rendered = cls._render_any(current, all_values)
-                setattr(val, field_name, rendered)
-            return val
+    def render_all(cls, data: Any):
+        """This validator handles the rendering of all structures inside
 
-        # For plain JSON-like structures, delegate to render_value (which recurses)
-        return cls.render_value(val, all_values)
-
-    @model_validator(mode="after")
-    def render_all(self):
-        """Render all string-like structures using the full config (including defaults).
-
-        This mutates the instance (and any nested models) in-place to preserve types.
+        In Pydantic V2, we would likely try to generalize this behavior in `beet`.
+        For now, we have to match every key-value in our values dict to figure out
+         if the string or string within needs to be rendered.
         """
-        all_values = self.model_dump()
-
-        for field_name in self.model_fields:
-            current = getattr(self, field_name)
-            rendered = type(self)._render_any(current, all_values)
-            setattr(self, field_name, rendered)
-
-        return self
+        if not isinstance(data, dict):
+            return data
+        
+        return {key: cls.render_value(value, all_values=data) for key, value in data.items()}
 
 
 class Versioning:

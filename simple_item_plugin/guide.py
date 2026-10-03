@@ -839,7 +839,7 @@ class Guide:
 
     def create_modifier(self, pages: list[MinecraftTextComponent]):
         item_modifier = ItemModifier({
-            "function": "minecraft:set_components",
+            "type": "minecraft:set_components",
             "components": {
                 "minecraft:written_book_content": {
                     "title": "Guide",

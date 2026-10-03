@@ -1,7 +1,7 @@
 import logging
 import re
 
-from beet import Context, Function, FunctionTag
+from beet import Context, Function, FunctionTag, LootTable, LootTableTag
 
 from .models import Versioning, VersioningOptions
 from .utils import call_if_version_match
@@ -21,7 +21,10 @@ def generate_call(ctx: Context, opts: VersioningOptions, path: str):
         base_path, Function(call_if_version_match(opts.scoreholder, opts.version, path))
     )
     api_path = ctx.generate[opts.api.tag_path](
-        base_path, FunctionTag({"values": [version_check]})
+        base_path, FunctionTag({"values": [{
+            "id": version_check,
+            "required": False,
+        }]})
     )
 
     logger.info(api_path)
@@ -39,8 +42,17 @@ def generate_api(ctx: Context):
     opts = ctx.inject(Versioning).opts
 
     query = ctx.query(match=opts.api.match, extend=Function)
-    if not Function in query:
-        return
-    for path, func in query[Function].keys():
-        if func.lines and path is not None and PUBLIC_PAT.match(func.lines[0]):
-            generate_call(ctx, opts, path)
+    if Function in query:
+        for path, func in query[Function].keys():
+            if func.lines and path is not None and PUBLIC_PAT.match(func.lines[0]):
+                generate_call(ctx, opts, path)
+    
+    query = ctx.query(match=opts.refactor.match, extend=LootTable)
+    if LootTable in query:
+        for path, advancement in query[LootTable].keys():
+            base_path = path.replace(opts.api.implementation_prefix, "")
+            api_path = ctx.generate[opts.api.loot_table_tag_path](
+                base_path, LootTableTag({"values": [path]})
+            )
+            logger.info(api_path)
+        

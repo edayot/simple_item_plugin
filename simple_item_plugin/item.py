@@ -211,8 +211,8 @@ class Item(Registry):
                         {
                             "type": "minecraft:loot_table",
                             "value": self.loot_table_path,
-                            "functions": [
-                                {"function": "minecraft:set_count", "count": count}
+                            "modifier": [
+                                {"type": "minecraft:set_count", "count": count}
                             ],
                         }
                     ],
@@ -495,7 +495,7 @@ execute
     run function {all_same_function_id}
 """)
         ctx.data.predicates.setdefault(predicate_path).data = {
-            "condition": "minecraft:location_check",
+            "type": "minecraft:location_check",
             "predicate": {
                 "block": {
                     "blocks": self.block_properties.base_block,
@@ -510,19 +510,19 @@ execute
         for key, value in self.components_extra.items():
             if key == "minecraft:custom_data":
                 res.append(
-                    {"function": "minecraft:set_custom_data", "tag": value}
+                    {"type": "minecraft:set_custom_data", "tag": value}
                 )
             elif key == "special:item_modifier":
                 if isinstance(value, str):
-                    res.append({"function": "minecraft:reference", "name": value})
+                    res.append(value)
                 elif isinstance(value, tuple):
                     for v in value:
-                        res.append({"function": "minecraft:reference", "name": v})
+                        res.append(v)
                 else:
                     raise ValueError(f"Invalid value for special:item_modifier {value}")
             else:
                 res.append(
-                    {"function": "minecraft:set_components", "components": {key: value}}
+                    {"type": "minecraft:set_components", "components": {key: value}}
                 )
                 
         return res
@@ -537,22 +537,22 @@ execute
                             {
                                 "type": "minecraft:item",
                                 "name": self.base_item,
-                                "functions": [
+                                "modifier": [
                                     {
-                                        "function": "minecraft:set_components",
+                                        "type": "minecraft:set_components",
                                         "components": {
                                             "minecraft:item_model": self.item_model,
                                             "minecraft:custom_data": self.create_custom_data(ctx),
                                         },
                                     },
                                     {
-                                        "function": "minecraft:set_name",
+                                        "type": "minecraft:set_name",
                                         "entity": "this",
                                         "target": "item_name",
                                         "name": self.get_item_name(),
                                     },
                                     {
-                                        "function": "minecraft:set_lore",
+                                        "type": "minecraft:set_lore",
                                         "entity": "this",
                                         "lore": self.create_lore(),
                                         "mode": "replace_all",

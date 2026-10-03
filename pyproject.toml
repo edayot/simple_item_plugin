@@ -5,9 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "beet>=0.113.0b10",
-    "bolt>=0.50.0b5",
-    "mecha>=0.102.0b2",
+    "beet>=0.113.0",
+    "bolt>=0.50.0",
+    "mecha>=0.102.0",
     "model-resolver>=1.13.0",
     "weld-deps>=0.8.0",
 ]
