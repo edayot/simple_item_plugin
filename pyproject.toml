@@ -21,6 +21,6 @@ packages = ["simple_item_plugin"]
 
 
 
-[tool.uv.sources]
-model_resolver = { path = "../model_resolver", editable = true }
+# [tool.uv.sources]
+# model_resolver = { path = "../model_resolver", editable = true }
 # weld-deps = { path = "../weld-deps", editable = true }
