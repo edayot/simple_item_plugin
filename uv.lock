@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14"
 
 [[package]]
@@ -283,16 +283,28 @@ wheels = [
 [[package]]
 name = "model-resolver"
 version = "1.15.2"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "../model_resolver" }
 dependencies = [
     { name = "beet" },
     { name = "click" },
     { name = "pillow" },
     { name = "pyopengl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bf/57/af01f478c624ccf5d8dedb9059119e35ac4c2011df5fa44c38afc8931a78/model_resolver-1.15.2.tar.gz", hash = "sha256:0d6743b9b114ca2c01de9c87198deb9a64af5af6f36297b42d1cbe3be0722628", size = 1249775, upload-time = "2026-03-24T20:19:26.853Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d6/f2/e3191c5ab37f70f21909ca79ed39ac5c5241ca354d17e8e29f5159e06571/model_resolver-1.15.2-py3-none-any.whl", hash = "sha256:7adf17913d78671639436662563e6dd95ed2a098b57792ee6fb9be1855dda917", size = 60746, upload-time = "2026-03-24T20:19:28.449Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "beet", specifier = ">=0.113.0b10" },
+    { name = "click", specifier = ">=8.1.7" },
+    { name = "pillow", specifier = ">10.3.0" },
+    { name = "pyopengl", specifier = ">=3.1.9,<4.0.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "autoflake", specifier = ">=2.3.1,<3.0.0" },
+    { name = "black", specifier = ">=24.4.2,<25.0.0" },
+    { name = "pytest-insta", specifier = ">=0.3.0,<1.0.0" },
+    { name = "python-semantic-release", specifier = ">=8.7.0,<9.0.0" },
 ]
 
 [[package]]
@@ -534,7 +546,7 @@ wheels = [
 
 [[package]]
 name = "simple-item-plugin"
-version = "0.32.2"
+version = "0.33.0"
 source = { editable = "." }
 dependencies = [
     { name = "beet" },
@@ -549,7 +561,7 @@ requires-dist = [
     { name = "beet", specifier = ">=0.113.0" },
     { name = "bolt", specifier = ">=0.50.0" },
     { name = "mecha", specifier = ">=0.102.0" },
-    { name = "model-resolver", specifier = ">=1.13.0" },
+    { name = "model-resolver", editable = "../model_resolver" },
     { name = "weld-deps", specifier = ">=0.8.0" },
 ]
 

@@ -49,10 +49,23 @@ def generate_api(ctx: Context):
     
     query = ctx.query(match=opts.refactor.match, extend=LootTable)
     if LootTable in query:
-        for path, advancement in query[LootTable].keys():
+        for path, loot_table in query[LootTable].keys():
             base_path = path.replace(opts.api.implementation_prefix, "")
             api_path = ctx.generate[opts.api.loot_table_tag_path](
                 base_path, LootTableTag({"values": [path]})
             )
-            logger.info(api_path)
+            ctx.data[LootTable][api_path] = LootTable({
+                "pools": [
+                    {
+                        "rolls": 1,
+                        "entries": [
+                            {
+                                "type": "minecraft:loot_table",
+                                "value": f"#{api_path}"
+                            }
+                        ]
+                    }
+                ]
+            })
+            logger.info((path, api_path))
         

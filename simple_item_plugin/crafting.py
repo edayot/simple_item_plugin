@@ -1,6 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
-from model_resolver.utils import PackGetterV2
+from model_resolver.pack_getter import PackGetter
 from nbtlib import serialize_tag
 from nbtlib.tag import (
     String,
@@ -153,7 +153,7 @@ class RecipeItemTag(Registry):
 
     def get_first_item(self, ctx: Context | BeetGenerator) -> str:
         real_ctx = ctx if isinstance(ctx, Context) else ctx.ctx
-        getter = PackGetterV2.from_context(real_ctx)
+        getter = PackGetter.from_context(real_ctx)
         items = list(iter_tagged_id(self.tagged_id, getter.data.item_tags))
         return items[0]
 

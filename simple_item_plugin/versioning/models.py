@@ -64,7 +64,7 @@ class VersioningOptions(ContextualModel):
         tag_path: str = ""
         loot_table_tag_path: str = ""
 
-    scoreholder: str = "#{{ project_name }}"
+    scoreholder: str 
     schema_: list[str] = Field(default=["major", "minor", "patch"], alias="schema")
     scheduled_paths: ListOption[str] = ListOption(__root__=["impl/tick"])
     version: Version | None = None
